@@ -1,0 +1,34 @@
+{
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "outputDirectory": ".next",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "nodejs": "18.x",
+  "env": {
+    "NEXT_PUBLIC_SUPABASE_URL": {
+      "description": "Supabase project URL",
+      "required": true
+    },
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": {
+      "description": "Supabase anonymous key",
+      "required": true
+    },
+    "SUPABASE_SERVICE_ROLE_KEY": {
+      "description": "Supabase service role key",
+      "required": true
+    },
+    "NEXT_PUBLIC_PRIZE_AMOUNT": {
+      "description": "Prize amount in INR",
+      "default": "1000"
+    },
+    "NEXT_PUBLIC_APP_URL": {
+      "description": "App URL",
+      "default": "https://foxscore.vercel.app"
+    },
+    "WHATSAPP_WEBHOOK_URL": {
+      "description": "WhatsApp webhook URL (optional)",
+      "required": false
+    }
+  }
+}

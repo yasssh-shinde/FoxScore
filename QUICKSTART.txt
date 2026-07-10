@@ -1,0 +1,87 @@
+================================================================================
+DIGITAL HEALTH SCORE CHALLENGE - QUICK START
+================================================================================
+
+STEP 1: CREATE SUPABASE PROJECT (2 min)
+  → Go to supabase.com → Sign Up (Free)
+  → Create new project
+  → Copy URL & Keys from Settings → API
+
+STEP 2: SETUP DATABASE (1 min)
+  → Go to SQL Editor in Supabase
+  → Create New Query
+  → Paste entire contents of: supabase/migrations/001_init.sql
+  → Run
+
+STEP 3: CLONE & INSTALL (1 min)
+  → npm install
+
+STEP 4: ENV VARIABLES (1 min)
+  → Copy .env.example to .env.local
+  → Paste your Supabase keys
+
+STEP 5: RUN (30 sec)
+  → npm run dev
+  → Open http://localhost:3000
+
+================================================================================
+WHAT YOU GET:
+================================================================================
+✓ Landing page with CTA
+✓ Lead capture form
+✓ Automated Digital Health Score (0-100)
+✓ Animated results screen
+✓ Detailed audit report
+✓ Admin dashboard
+✓ Dark theme with premium UI
+✓ Mobile responsive
+✓ Ready to deploy
+
+================================================================================
+DEPLOY TO VERCEL (Free):
+================================================================================
+1. Push code to GitHub
+2. Go to vercel.com
+3. Import repository
+4. Add environment variables
+5. Click Deploy
+6. Done! Your app is live 🎉
+
+================================================================================
+PROJECT STRUCTURE:
+================================================================================
+src/app/
+  ├── page.tsx              (Landing page)
+  ├── challenge/page.tsx    (Form)
+  ├── challenge/result/     (Results screen)
+  ├── challenge/report/     (Detailed report)
+  ├── admin/page.tsx        (Dashboard)
+  └── api/                  (API routes)
+
+src/services/
+  └── scoreCalculator.ts    (Score logic)
+
+src/types/
+  └── index.ts              (TypeScript types)
+
+================================================================================
+KEY FILES:
+================================================================================
+README.md           → Full documentation
+SETUP.md           → Detailed setup guide
+DEPLOYMENT.md      → Deployment instructions
+PROJECT.md         → Architecture & design
+QUICKSTART.txt     → This file
+vercel.json        → Vercel config
+.env.example       → Environment template
+
+================================================================================
+SUPPORT:
+================================================================================
+Email: seofox.contact@gmail.com
+Status: Production Ready ✅
+Version: 1.0.0
+
+================================================================================
+Remember: Completely free using Supabase & Vercel free tiers!
+================================================================================

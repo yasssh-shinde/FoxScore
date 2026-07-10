@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-gradient-to-br from-[#0A0E27] via-[#1a1f3a] to-[#0A0E27] text-white min-h-screen font-sans;
+}
+
+@keyframes glow {
+  0%, 100% { text-shadow: 0 0 20px rgba(255, 107, 53, 0.5); }
+  50% { text-shadow: 0 0 40px rgba(255, 107, 53, 0.8); }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes countUp {
+  from { counter-increment: num 0; }
+}
+
+.glow-text {
+  animation: glow 2s ease-in-out infinite;
+}
+
+.slide-in {
+  animation: slideIn 0.6s ease-out;
+}
+
+.gradient-btn {
+  @apply bg-gradient-to-r from-[#FF6B35] to-[#FF8C42] hover:from-[#FF8C42] hover:to-[#FFA550] transition-all duration-300 text-white font-semibold py-3 px-6 rounded-lg;
+}
+
+.glass-card {
+  @apply bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-6;
+}
