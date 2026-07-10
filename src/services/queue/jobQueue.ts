@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabase'
 import { runFullAudit } from '../audit/reportBuilder'
 import { sendAuditEmail } from '../emailService'
+import { after } from 'next/server'
 
 export type JobType = 'PROCESS_AUDIT' | 'SEND_EMAIL' | 'SEND_WEBHOOK'
 
@@ -277,11 +278,15 @@ export async function handleProcessAudit(payload: { lead_id: string }) {
     await enqueueJob('SEND_EMAIL', { lead_id: leadId }).catch(e => console.warn('Email job enqueue failed:', e))
     await enqueueJob('SEND_WEBHOOK', { lead_id: leadId }).catch(e => console.warn('Webhook job enqueue failed:', e))
 
-    // Immediately process all pending jobs (for instant delivery on localhost)
-    setTimeout(async () => {
-      const count = await runNextJobs()
-      if (count > 0) console.log(`⚡ Processed ${count} jobs immediately after audit`)
-    }, 50)
+    // Use Next.js after() to process jobs in background (won't block response)
+    after(async () => {
+      try {
+        const count = await runNextJobs()
+        if (count > 0) console.log(`⚡ Processed ${count} jobs immediately after audit`)
+      } catch (e) {
+        console.warn('Background job processing failed:', e)
+      }
+    })
   } catch (e) {
     console.warn('Failed to handle follow-up jobs:', e)
   }
