@@ -274,18 +274,16 @@ export async function handleProcessAudit(payload: { lead_id: string }) {
 
   // 8. Enqueue and immediately process follow-up tasks
   try {
-    const emailJobId = await enqueueJob('SEND_EMAIL', { lead_id: leadId })
-    const webhookJobId = await enqueueJob('SEND_WEBHOOK', { lead_id: leadId })
+    await enqueueJob('SEND_EMAIL', { lead_id: leadId }).catch(e => console.warn('Email job enqueue failed:', e))
+    await enqueueJob('SEND_WEBHOOK', { lead_id: leadId }).catch(e => console.warn('Webhook job enqueue failed:', e))
 
-    // Immediately process jobs (for localhost development)
-    if (emailJobId) {
-      setTimeout(() => processJob(emailJobId).catch(e => console.warn('Email processing failed:', e)), 100)
-    }
-    if (webhookJobId) {
-      setTimeout(() => processJob(webhookJobId).catch(e => console.warn('Webhook processing failed:', e)), 100)
-    }
+    // Immediately process all pending jobs (for instant delivery on localhost)
+    setTimeout(async () => {
+      const count = await runNextJobs()
+      if (count > 0) console.log(`⚡ Processed ${count} jobs immediately after audit`)
+    }, 50)
   } catch (e) {
-    console.warn('Failed to enqueue follow-up jobs:', e)
+    console.warn('Failed to handle follow-up jobs:', e)
   }
 }
 
