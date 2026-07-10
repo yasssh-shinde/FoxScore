@@ -34,15 +34,15 @@ export async function GET(req: NextRequest) {
     }
 
     const scores = (leads || [])
-      .map(l => l.actual_score)
-      .filter(s => s !== null) as number[]
+      .map((l: any) => l.actual_score)
+      .filter((s: any) => s !== null) as number[]
 
     const stats = {
       totalLeads: leads?.length || 0,
       averageScore: scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0,
       highestScore: scores.length > 0 ? Math.max(...scores) : 0,
       lowestScore: scores.length > 0 ? Math.min(...scores) : 0,
-      prizeWinners: (leads || []).filter(l => l.won_prize).length,
+      prizeWinners: (leads || []).filter((l: any) => l.won_prize).length,
     }
 
     return NextResponse.json({ stats })
