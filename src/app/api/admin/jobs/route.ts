@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseAdmin } from '@/lib/supabase'
 import { processJob, runNextJobs } from '@/services/queue/jobQueue'
 import { after } from 'next/server'
 
@@ -10,6 +10,7 @@ export async function GET(req: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '50')
 
+    const supabaseAdmin = getSupabaseAdmin()
     let query = supabaseAdmin
       .from('background_jobs')
       .select('*', { count: 'exact' })
@@ -55,6 +56,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing job_id' }, { status: 400 })
     }
 
+    const supabaseAdmin = getSupabaseAdmin()
     // Reset job state for manual retry
     const { data: job, error: updateError } = await supabaseAdmin
       .from('background_jobs')
