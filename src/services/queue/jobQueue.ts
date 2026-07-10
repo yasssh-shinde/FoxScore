@@ -272,11 +272,21 @@ export async function handleProcessAudit(payload: { lead_id: string }) {
   if (updateErr) throw updateErr
   if (claimErr) console.warn('⚠️ Prize claim save failed:', claimErr.message)
 
-  // 8. Enqueue follow-up tasks in parallel (non-blocking)
-  Promise.allSettled([
-    enqueueJob('SEND_EMAIL', { lead_id: leadId }).catch(e => console.warn('Email job failed:', e)),
-    enqueueJob('SEND_WEBHOOK', { lead_id: leadId }).catch(e => console.warn('Webhook job failed:', e)),
-  ]).catch(() => {})
+  // 8. Enqueue and immediately process follow-up tasks
+  try {
+    const emailJobId = await enqueueJob('SEND_EMAIL', { lead_id: leadId })
+    const webhookJobId = await enqueueJob('SEND_WEBHOOK', { lead_id: leadId })
+
+    // Immediately process jobs (for localhost development)
+    if (emailJobId) {
+      setTimeout(() => processJob(emailJobId).catch(e => console.warn('Email processing failed:', e)), 100)
+    }
+    if (webhookJobId) {
+      setTimeout(() => processJob(webhookJobId).catch(e => console.warn('Webhook processing failed:', e)), 100)
+    }
+  } catch (e) {
+    console.warn('Failed to enqueue follow-up jobs:', e)
+  }
 }
 
 async function handleSendEmail(payload: { lead_id: string }) {
