@@ -207,8 +207,14 @@ export async function POST(req: NextRequest) {
           const success = await processJob(jobId)
           if (!success) {
             console.warn(`⚠️ Job ${jobId} processing failed. Attempting queue worker fallback...`)
-            await runNextJobs()
           }
+        }
+
+        // After audit completes, process any pending email/webhook jobs immediately
+        await new Promise(r => setTimeout(r, 100)) // Small delay to ensure jobs are created
+        const processedCount = await runNextJobs()
+        if (processedCount > 0) {
+          console.log(`📧 Processed ${processedCount} follow-up jobs after audit`)
         }
       } catch (err: any) {
         console.error(`🔴 Background job processing error:`, err.message || err)
