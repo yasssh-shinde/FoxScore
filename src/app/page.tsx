@@ -108,7 +108,7 @@ export default function Home() {
               <span className="text-4xl">🏆</span>
               <div className="text-left">
                 <div className="text-2xl font-black bg-gradient-to-r from-yellow-400 to-yellow-500 bg-clip-text text-transparent">
-                  Win ₹1,000 Cash!
+                  Win Cash!
                 </div>
                 <p className="text-sm text-gray-400">Guess your Digital Health Score correctly to claim.</p>
               </div>

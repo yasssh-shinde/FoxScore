@@ -204,10 +204,10 @@ export async function handleProcessAudit(payload: { lead_id: string }) {
     scoreResult = { overall: 100, website: 100, seo: 100, google: 100, social: 100, won: true }
   }
 
-  // 3. Game/Prize matching logic
-  const scoreDifference = Math.abs(lead.guessed_score * 10 - actualScore)
-  const isWinner = scoreDifference <= 2
+  // 3. Game/Prize matching logic - Exact score match only!
   const actualScoreOn10 = Math.round(actualScore / 10)
+  const isWinner = lead.guessed_score === actualScoreOn10
+  const scoreDifference = Math.abs(lead.guessed_score - actualScoreOn10)
 
   console.log(`🎯 Audit completed. Guess: ${lead.guessed_score} (x10 = ${lead.guessed_score * 10}), Actual: ${actualScore}, Diff: ${scoreDifference}, Won: ${isWinner}`)
 

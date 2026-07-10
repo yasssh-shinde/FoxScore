@@ -269,7 +269,7 @@ export default function ResultPage() {
                   Perfect Match! (Within ±2 Tolerance)
                 </h2>
                 <p className="text-base text-gray-300">
-                  Your guess was within ±2 points of your actual score. You qualify to win ₹1,000 cash! 🏆 
+                  Congratulations! You guessed the exact score! You qualify to win cash! 🏆
                   <span className="block mt-2 font-semibold text-yellow-500/90 text-sm">Reward Status: Pending Admin Verification</span>
                 </p>
               </div>
