@@ -187,21 +187,37 @@ export async function handleProcessAudit(payload: { lead_id: string }) {
 
   if (leadErr || !lead) throw new Error(`Lead ${leadId} not found: ${leadErr?.message}`)
 
-  console.log(`🔎 Running server audit on URL: ${lead.website_url}`)
-  
-  // 2. Perform server audit
-  const report = await runFullAudit(lead.website_url)
-  if (!report.success) throw new Error(report.error || 'Audit report generation failed')
-
-  let scoreResult = report.scores
-  let actualScore = scoreResult.overall
-
-  // Special handling for partner sites: achivoo.com and seofox.io always get 100 score
+  // Check if this is a partner site BEFORE running audit
   const isPartnerSite = lead.website_url.includes('achivoo.com') || lead.website_url.includes('seofox.io')
+
+  let scoreResult: any
+  let actualScore: number
+
+  let auditData: any
+
   if (isPartnerSite) {
-    console.log(`⭐ Partner site detected (${lead.website_url}). Overriding score to 100.`)
+    // Partner sites always get perfect score - skip audit
+    console.log(`⭐ Partner site detected (${lead.website_url}). Returning perfect score 100.`)
     actualScore = 100
     scoreResult = { overall: 100, website: 100, seo: 100, google: 100, social: 100, won: true }
+    auditData = {
+      website: [],
+      seo: [],
+      google: [],
+      social: [],
+      improvements: [],
+      strengths: ['⭐ Partner site with perfect digital health'],
+      priorityActions: []
+    }
+  } else {
+    // 2. Perform server audit for regular sites
+    console.log(`🔎 Running server audit on URL: ${lead.website_url}`)
+    const report = await runFullAudit(lead.website_url)
+    if (!report.success) throw new Error(report.error || 'Audit report generation failed')
+
+    scoreResult = report.scores
+    actualScore = scoreResult.overall
+    auditData = report.auditData
   }
 
   // 3. Game/Prize matching logic - Exact score match only!
@@ -223,7 +239,7 @@ export async function handleProcessAudit(payload: { lead_id: string }) {
         google_score: scoreResult.google,
         social_score: scoreResult.social,
         overall_score: actualScore,
-        audit_data: report.auditData,
+        audit_data: auditData,
       }])
       .then((res: any) => res.error),
 
