@@ -196,72 +196,63 @@ export async function handleProcessAudit(payload: { lead_id: string }) {
   const scoreResult = report.scores
   const actualScore = scoreResult.overall
 
-  // 3. Game/Prize matching logic (Guessed score is now out of 100)
-  // Win condition: Guessed score (1-10 scale) multiplied by 10 is within ±2 points of actual score (0-100 scale)
+  // 3. Game/Prize matching logic
   const scoreDifference = Math.abs(lead.guessed_score * 10 - actualScore)
   const isWinner = scoreDifference <= 2
+  const actualScoreOn10 = Math.round(actualScore / 10)
 
   console.log(`🎯 Audit completed. Guess: ${lead.guessed_score} (x10 = ${lead.guessed_score * 10}), Actual: ${actualScore}, Diff: ${scoreDifference}, Won: ${isWinner}`)
 
-  // 4. Save to audit_results (excluding raw HTML for database performance)
-  const { error: auditErr } = await supabaseAdmin
-    .from('audit_results')
-    .insert([{
-      lead_id: leadId,
-      website_score: scoreResult.website,
-      seo_score: scoreResult.seo,
-      google_score: scoreResult.google,
-      social_score: scoreResult.social,
-      overall_score: actualScore,
-      audit_data: report.auditData, // This contains zero raw HTML now!
-    }])
+  // 4-7. Execute ALL database operations in parallel (NOT sequentially)
+  const [auditErr, updateErr, claimErr] = await Promise.all([
+    // Save audit results
+    supabaseAdmin
+      .from('audit_results')
+      .insert([{
+        lead_id: leadId,
+        website_score: scoreResult.website,
+        seo_score: scoreResult.seo,
+        google_score: scoreResult.google,
+        social_score: scoreResult.social,
+        overall_score: actualScore,
+        audit_data: report.auditData,
+      }])
+      .then(res => res.error),
 
-  if (auditErr) throw auditErr
+    // Update lead state
+    supabaseAdmin
+      .from('leads')
+      .update({
+        actual_score: actualScore,
+        won_prize: isWinner,
+      })
+      .eq('id', leadId)
+      .then(res => res.error),
 
-  // 5. Update lead state
-  const { error: updateErr } = await supabaseAdmin
-    .from('leads')
-    .update({
-      actual_score: actualScore,
-      won_prize: isWinner,
-    })
-    .eq('id', leadId)
-
-  if (updateErr) throw updateErr
-
-  // 6. Create Prize Claim history record if won or guessed (Fail-safe: ignore if table missing)
-  try {
-    const actualScoreOn10 = Math.round(actualScore / 10)
-    const { error: claimErr } = await supabaseAdmin
+    // Create prize claim
+    supabaseAdmin
       .from('prize_claims')
       .insert([{
         lead_id: leadId,
         guessed_score: lead.guessed_score,
         actual_score: actualScoreOn10,
         difference: Math.abs(lead.guessed_score - actualScoreOn10),
-        status: isWinner ? 'pending' : 'rejected', // Rejected if did not match, pending admin approval if matched
+        status: isWinner ? 'pending' : 'rejected',
         ip_address: lead.ip_address || null,
       }])
+      .then(res => res.error)
+      .catch(() => null),
+  ])
 
-    if (claimErr) {
-      console.warn('⚠️ Could not save prize claim history (table may be missing). Run migrations.', claimErr.message)
-    }
-  } catch (err: any) {
-    console.warn('⚠️ Could not save prize claim history:', err.message || err)
-  }
+  if (auditErr) throw auditErr
+  if (updateErr) throw updateErr
+  if (claimErr) console.warn('⚠️ Prize claim save failed:', claimErr.message)
 
-  // 7. Enqueue follow-up tasks (Fail-safe: ignore if table missing)
-  try {
-    await enqueueJob('SEND_EMAIL', { lead_id: leadId })
-  } catch (err: any) {
-    console.warn('⚠️ Could not enqueue email job:', err.message || err)
-  }
-  
-  try {
-    await enqueueJob('SEND_WEBHOOK', { lead_id: leadId })
-  } catch (err: any) {
-    console.warn('⚠️ Could not enqueue webhook job:', err.message || err)
-  }
+  // 8. Enqueue follow-up tasks in parallel (non-blocking)
+  Promise.allSettled([
+    enqueueJob('SEND_EMAIL', { lead_id: leadId }).catch(e => console.warn('Email job failed:', e)),
+    enqueueJob('SEND_WEBHOOK', { lead_id: leadId }).catch(e => console.warn('Webhook job failed:', e)),
+  ]).catch(() => {})
 }
 
 async function handleSendEmail(payload: { lead_id: string }) {
