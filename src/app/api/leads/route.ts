@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { enqueueJob, runNextJobs, handleProcessAudit } from '@/services/queue/jobQueue'
+import { enqueueJob, runNextJobs, handleProcessAudit, processJob } from '@/services/queue/jobQueue'
 import { after } from 'next/server'
 import { leadFormSchema } from '@/lib/validators/formSchema'
 
@@ -195,19 +195,23 @@ export async function POST(req: NextRequest) {
     // 5. Enqueue the audit process job (Run in background)
     const jobId = await enqueueJob('PROCESS_AUDIT', { lead_id: lead.id })
 
+    // Background job processing (non-blocking)
     after(async () => {
-      if (!jobId) {
-        console.warn(`⚠️ Background queue table missing. Falling back to synchronous audit execution in background...`)
-        try {
+      try {
+        if (!jobId) {
+          console.warn(`⚠️ Background queue table missing. Falling back to synchronous audit execution...`)
           await handleProcessAudit({ lead_id: lead.id })
-          console.log(`✅ Synchronous fallback audit completed in background for lead ${lead.id}`)
-        } catch (syncErr: any) {
-          console.error(`🔴 Synchronous fallback audit failed:`, syncErr.message || syncErr)
+          console.log(`✅ Synchronous fallback audit completed for lead ${lead.id}`)
+        } else {
+          console.log(`⚡ Processing job ${jobId} in background...`)
+          const success = await processJob(jobId)
+          if (!success) {
+            console.warn(`⚠️ Job ${jobId} processing failed. Attempting queue worker fallback...`)
+            await runNextJobs()
+          }
         }
-      } else {
-        console.log(`⚡ Next.js 15 after() executing queue worker...`)
-        const count = await runNextJobs()
-        console.log(`⚡ Queue worker finished. Processed ${count} jobs.`)
+      } catch (err: any) {
+        console.error(`🔴 Background job processing error:`, err.message || err)
       }
     })
 
