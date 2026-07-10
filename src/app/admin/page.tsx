@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 
 export default function AdminDashboard() {
@@ -91,6 +92,35 @@ export default function AdminDashboard() {
             >
               📥 Export CSV
             </button>
+          </div>
+
+          {/* Navigation */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+            <Link href="/admin/setup" className="p-4 glass-card hover:bg-white/10 transition rounded-lg text-center border-2 border-green-500/50">
+              <div className="text-3xl mb-2">🚀</div>
+              <div className="font-semibold">Setup</div>
+              <div className="text-xs text-gray-400">Add team members</div>
+            </Link>
+            <Link href="/admin/leads" className="p-4 glass-card hover:bg-white/10 transition rounded-lg text-center">
+              <div className="text-3xl mb-2">📋</div>
+              <div className="font-semibold">Lead Dashboard</div>
+              <div className="text-xs text-gray-400">Manage & assign leads</div>
+            </Link>
+            <Link href="/admin/team" className="p-4 glass-card hover:bg-white/10 transition rounded-lg text-center">
+              <div className="text-3xl mb-2">👥</div>
+              <div className="font-semibold">Team Management</div>
+              <div className="text-xs text-gray-400">View team members</div>
+            </Link>
+            <Link href="/admin/reminders" className="p-4 glass-card hover:bg-white/10 transition rounded-lg text-center">
+              <div className="text-3xl mb-2">⏰</div>
+              <div className="font-semibold">Follow-up Reminders</div>
+              <div className="text-xs text-gray-400">Manage reminders</div>
+            </Link>
+            <a href="/api/leads/export" className="p-4 glass-card hover:bg-white/10 transition rounded-lg text-center cursor-pointer">
+              <div className="text-3xl mb-2">💾</div>
+              <div className="font-semibold">Export Leads</div>
+              <div className="text-xs text-gray-400">Download CSV</div>
+            </a>
           </div>
         </motion.div>
 

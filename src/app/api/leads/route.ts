@@ -4,6 +4,66 @@ import { generateAuditData, calculateScore } from '@/services/scoreCalculator'
 import { sendWelcomeEmail } from '@/services/emailService'
 import { RegistrationFormData } from '@/types'
 
+export async function GET(req: NextRequest) {
+  try {
+    const searchParams = req.nextUrl.searchParams
+    const search = searchParams.get('search') || ''
+    const sortBy = searchParams.get('sortBy') || 'created_at'
+    const sortOrder = searchParams.get('sortOrder') || 'desc'
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '20')
+
+    let query = supabase
+      .from('leads')
+      .select(
+        `*,
+        lead_assignments(
+          id,
+          assigned_to,
+          status,
+          team_members(name, email)
+        ),
+        audit_results(overall_score)`,
+        { count: 'exact' }
+      )
+
+    // Search filter
+    if (search) {
+      query = query.or(
+        `full_name.ilike.%${search}%,company_name.ilike.%${search}%,email.ilike.%${search}%`
+      )
+    }
+
+    // Sorting
+    query = query.order(sortBy, { ascending: sortOrder === 'asc' })
+
+    // Pagination
+    const { data, error, count } = await query.range(
+      (page - 1) * limit,
+      page * limit - 1
+    )
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
+
+    return NextResponse.json({
+      data,
+      pagination: {
+        total: count,
+        page,
+        limit,
+        pages: Math.ceil((count || 0) / limit),
+      },
+    })
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Failed to fetch leads' },
+      { status: 500 }
+    )
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body: RegistrationFormData & { guessed_score: number } = await req.json()
@@ -38,6 +98,7 @@ export async function POST(req: NextRequest) {
         actual_score: scoreResult.overall,
         won_prize: won,
         consultation_requested: false,
+        checked_by: body.checked_by || null,
       }])
       .select()
       .single()

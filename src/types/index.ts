@@ -70,3 +70,40 @@ export type ScoreResult = {
   social: number
   won: boolean
 }
+
+export type TeamMember = {
+  id: string
+  name: string
+  email: string
+  role: 'admin' | 'manager' | 'member'
+  status: 'active' | 'inactive'
+  created_at: string
+  updated_at: string
+}
+
+export type LeadAssignment = {
+  id: string
+  lead_id: string
+  assigned_to: string
+  assigned_by?: string
+  status: 'assigned' | 'contacted' | 'followed_up' | 'closed'
+  contacted_at?: string
+  notes?: string
+  created_at: string
+  updated_at: string
+}
+
+export type FollowUpReminder = {
+  id: string
+  lead_id: string
+  assigned_to: string
+  reminder_date: string
+  reminder_type: 'email' | 'sms' | 'in_app'
+  status: 'pending' | 'sent' | 'completed' | 'skipped'
+  title?: string
+  description?: string
+  sent_at?: string
+  completed_at?: string
+  created_at: string
+  updated_at: string
+}

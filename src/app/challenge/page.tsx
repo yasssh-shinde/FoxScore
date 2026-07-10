@@ -1,15 +1,80 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { RegistrationFormData } from '@/types'
+import { RegistrationFormData, TeamMember } from '@/types'
 
 export default function Challenge() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [guessValue, setGuessValue] = useState(5)
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
+  const [selectedTeamMember, setSelectedTeamMember] = useState('')
+  const [selectedTeamMemberName, setSelectedTeamMemberName] = useState('')
+  const [loadingTeam, setLoadingTeam] = useState(true)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const fetchTeamMembers = async () => {
+      try {
+        const res = await fetch('/api/team-members')
+        if (!res.ok) throw new Error('Failed to fetch team members')
+        const data = await res.json()
+
+        // Ensure data is an array
+        if (Array.isArray(data) && data.length > 0) {
+          setTeamMembers(data)
+          setSelectedTeamMember(data[0].id)
+          setSelectedTeamMemberName(data[0].name)
+        } else {
+          // Fallback team members for development
+          const fallbackMembers = [
+            { id: 'yash-1', name: 'Yash', email: 'yash@seofox.io', role: 'admin', status: 'active' },
+            { id: 'dnya-1', name: 'Dnya', email: 'dnya@seofox.io', role: 'manager', status: 'active' },
+            { id: 'achyut-1', name: 'Achyut', email: 'achyut@seofox.io', role: 'manager', status: 'active' },
+            { id: 'vaibhav-1', name: 'Vaibhav', email: 'vaibhav@seofox.io', role: 'manager', status: 'active' },
+            { id: 'gargi-1', name: 'Gargi', email: 'gargi@seofox.io', role: 'manager', status: 'active' },
+          ]
+          setTeamMembers(fallbackMembers)
+          setSelectedTeamMember(fallbackMembers[0].id)
+          setSelectedTeamMemberName(fallbackMembers[0].name)
+          console.log('Using fallback team members. Run migrations to add to database.')
+        }
+      } catch (error) {
+        console.error('Failed to fetch team members:', error)
+        // Fallback team members for development
+        const fallbackMembers = [
+          { id: 'yash-1', name: 'Yash', email: 'yash@seofox.io', role: 'admin', status: 'active' },
+          { id: 'dnya-1', name: 'Dnya', email: 'dnya@seofox.io', role: 'manager', status: 'active' },
+          { id: 'achyut-1', name: 'Achyut', email: 'achyut@seofox.io', role: 'manager', status: 'active' },
+          { id: 'vaibhav-1', name: 'Vaibhav', email: 'vaibhav@seofox.io', role: 'manager', status: 'active' },
+          { id: 'gargi-1', name: 'Gargi', email: 'gargi@seofox.io', role: 'manager', status: 'active' },
+        ]
+        setTeamMembers(fallbackMembers)
+        setSelectedTeamMember(fallbackMembers[0].id)
+        setSelectedTeamMemberName(fallbackMembers[0].name)
+      } finally {
+        setLoadingTeam(false)
+      }
+    }
+
+    fetchTeamMembers()
+  }, [])
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const { register, handleSubmit, formState: { errors }, watch } = useForm<RegistrationFormData>({
     defaultValues: {
@@ -33,12 +98,30 @@ export default function Challenge() {
           ...data,
           website_url: websiteUrl,
           guessed_score: guessValue,
+          checked_by: selectedTeamMember,
         }),
       })
 
       if (!response.ok) throw new Error('Failed to submit')
 
       const { lead_id } = await response.json()
+
+      // Auto-assign to selected team member
+      if (selectedTeamMember) {
+        try {
+          await fetch('/api/lead-assignments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              lead_id: lead_id,
+              assigned_to: selectedTeamMember,
+            }),
+          })
+        } catch (err) {
+          console.error('Failed to assign lead:', err)
+        }
+      }
+
       router.push(`/challenge/result/${lead_id}`)
     } catch (error) {
       alert('Error submitting form. Please try again.')
@@ -106,6 +189,85 @@ export default function Challenge() {
                 />
                 {errors.company_name && <p className="text-red-400 text-xs mt-1">{errors.company_name.message}</p>}
               </div>
+            </div>
+
+            {/* Team Member Selection - Custom Dropdown */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">👤 Who will check your score? *</label>
+              {loadingTeam ? (
+                <div className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-2.5 text-gray-500">Loading team members...</div>
+              ) : !Array.isArray(teamMembers) || teamMembers.length === 0 ? (
+                <div className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-2.5 text-gray-500">No team members available</div>
+              ) : (
+                <div ref={dropdownRef} className="relative">
+                  {/* Dropdown Button */}
+                  <button
+                    type="button"
+                    onClick={() => setDropdownOpen(!dropdownOpen)}
+                    className="w-full bg-white/[0.03] border border-white/10 hover:border-white/20 focus:border-[#FF6B35] focus:ring-1 focus:ring-[#FF6B35]/20 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none transition-all duration-200 text-sm flex items-center justify-between"
+                  >
+                    <span>{selectedTeamMemberName || 'Select a team member...'}</span>
+                    <svg className={`w-4 h-4 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {dropdownOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="absolute z-50 w-full mt-2 bg-slate-800 border border-white/10 rounded-xl shadow-xl overflow-hidden"
+                    >
+                      {Array.isArray(teamMembers) && teamMembers.map((member) => {
+                        const getColor = (name: string) => {
+                          const colors: any = {
+                            'Yash': '#FF6B35',
+                            'Dnya': '#4F46E5',
+                            'Achyut': '#10B981',
+                            'Vaibhav': '#F59E0B',
+                            'Gargi': '#EC4899',
+                          }
+                          return colors[name] || '#6B7280'
+                        }
+
+                        const isSelected = selectedTeamMember === member.id
+                        const color = getColor(member.name)
+
+                        return (
+                          <button
+                            key={member.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedTeamMember(member.id)
+                              setSelectedTeamMemberName(member.name)
+                              setDropdownOpen(false)
+                            }}
+                            className={`w-full px-4 py-3 flex items-center gap-3 transition-colors ${
+                              isSelected
+                                ? 'bg-white/10 border-l-4'
+                                : 'hover:bg-white/5'
+                            }`}
+                            style={isSelected ? { borderLeftColor: color } : {}}
+                          >
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
+                            <div className="flex-1 text-left">
+                              <span className="font-semibold">{member.name}</span>
+                              <span className="text-xs text-gray-400 ml-2">({member.role})</span>
+                            </div>
+                            {isSelected && (
+                              <svg className="w-4 h-4 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </motion.div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Contact */}
