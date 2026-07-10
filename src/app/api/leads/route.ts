@@ -196,6 +196,9 @@ export async function POST(req: NextRequest) {
     const jobId = await enqueueJob('PROCESS_AUDIT', { lead_id: lead.id })
 
     // Background job processing (non-blocking)
+    // NOTE: On production (Vercel), after() may not complete before serverless function terminates
+    // Email jobs are processed by Vercel Cron (/api/cron/process-jobs) which runs every 1 minute
+    // On localhost, after() still provides instant feedback
     after(async () => {
       try {
         if (!jobId) {
@@ -206,15 +209,19 @@ export async function POST(req: NextRequest) {
           console.log(`⚡ Processing job ${jobId} in background...`)
           const success = await processJob(jobId)
           if (!success) {
-            console.warn(`⚠️ Job ${jobId} processing failed. Attempting queue worker fallback...`)
+            console.warn(`⚠️ Job ${jobId} processing failed. Vercel Cron will retry in 1 minute...`)
           }
         }
 
-        // After audit completes, process any pending email/webhook jobs immediately
-        await new Promise(r => setTimeout(r, 100)) // Small delay to ensure jobs are created
-        const processedCount = await runNextJobs()
-        if (processedCount > 0) {
-          console.log(`📧 Processed ${processedCount} follow-up jobs after audit`)
+        // Try to process pending jobs (works on localhost, may timeout on Vercel)
+        try {
+          await new Promise(r => setTimeout(r, 100))
+          const processedCount = await runNextJobs()
+          if (processedCount > 0) {
+            console.log(`📧 Processed ${processedCount} follow-up jobs after audit`)
+          }
+        } catch (e) {
+          console.warn(`⚠️ Immediate job processing skipped (will be handled by Vercel Cron)`)
         }
       } catch (err: any) {
         console.error(`🔴 Background job processing error:`, err.message || err)
