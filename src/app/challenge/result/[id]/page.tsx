@@ -265,9 +265,6 @@ export default function ResultPage() {
               <div className="glass-card border-yellow-500/30 bg-gradient-to-b from-yellow-500/10 to-transparent p-6 rounded-2xl relative overflow-hidden shadow-lg">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-yellow-500/10 rounded-full blur-2xl"></div>
                 <div className="text-4xl mb-3">🎉</div>
-                <h2 className="text-2xl md:text-3xl font-extrabold text-yellow-400 mb-2">
-                  Perfect Match! (Within ±2 Tolerance)
-                </h2>
                 <p className="text-base text-gray-300">
                   Congratulations! You guessed the exact score! You qualify to win cash! 🏆
                   <span className="block mt-2 font-semibold text-yellow-500/90 text-sm">Reward Status: Pending Admin Verification</span>
