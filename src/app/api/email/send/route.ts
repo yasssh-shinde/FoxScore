@@ -1,7 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+let resend: any = null
+
+function getResend() {
+  if (!resend) {
+    const apiKey = process.env.RESEND_API_KEY
+    if (!apiKey) {
+      throw new Error('RESEND_API_KEY environment variable is not set')
+    }
+    resend = new Resend(apiKey)
+  }
+  return resend
+}
 
 export async function POST(req: NextRequest) {
   console.log('\n🔵 /api/email/send endpoint called')
@@ -18,7 +29,7 @@ export async function POST(req: NextRequest) {
 
     console.log(`📮 Sending to: ${sendTo}`)
 
-    const result = await resend.emails.send({
+    const result = await getResend().emails.send({
       from: 'noreply@seofox.co.in',  // Using verified domain
       to: sendTo,
       subject: subject,
