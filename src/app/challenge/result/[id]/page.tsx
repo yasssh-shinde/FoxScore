@@ -47,7 +47,7 @@ export default function ResultPage() {
         if (!res.ok) throw new Error('Status check failed')
         const data = await res.json()
 
-        if (data.finished) {
+        if (data.finished && data.audit) {
           clearInterval(pollInterval)
           clearInterval(progressInterval)
           setProgressPercent(100)
@@ -56,6 +56,9 @@ export default function ResultPage() {
           setAudit(data.audit)
           setAuditFinished(true)
           setLoading(false)
+        } else if (data.finished && !data.audit) {
+          // Audit is done but data still loading, retry in 500ms
+          setTimeout(() => checkAuditStatus(), 500)
         }
       } catch (error) {
         console.error('Error checking audit status:', error)

@@ -33,9 +33,9 @@ export async function GET(
     const lead = leadRes.data
     const audit = auditRes.data
 
-    // If actual_score is populated, it means the background worker finished the audit
-    if (lead.actual_score !== null && audit) {
-      // Find prize claim status
+    // If actual_score is populated, the audit job has completed
+    if (lead.actual_score !== null) {
+      // Fetch prize claim status
       const { data: claim } = await supabaseAdmin
         .from('prize_claims')
         .select('status, difference')
@@ -49,7 +49,7 @@ export async function GET(
         claim_status: claim?.status || 'none',
         claim_difference: claim?.difference ?? 100,
         lead,
-        audit,
+        audit: audit || null, // Audit data may be loading, return null if not ready
       })
     }
 
