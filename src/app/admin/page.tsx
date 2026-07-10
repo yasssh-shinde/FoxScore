@@ -53,7 +53,7 @@ export default function AdminDashboard() {
         setLeads(leadsData)
 
         const scores = leadsData
-          .map(l => l.actual_score)
+          .map((l: any) => l.actual_score)
           .filter(s => s !== null) as number[]
 
         setStats({
@@ -61,7 +61,7 @@ export default function AdminDashboard() {
           averageScore: scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0,
           highestScore: scores.length > 0 ? Math.max(...scores) : 0,
           lowestScore: scores.length > 0 ? Math.min(...scores) : 0,
-          prizeWinners: leadsData.filter(l => l.won_prize).length,
+          prizeWinners: leadsData.filter((l: any) => l.won_prize).length,
         })
       }
     } catch (error) {
