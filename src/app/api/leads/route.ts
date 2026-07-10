@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
     // 1. Zod schema validation & sanitization
     const validationResult = leadFormSchema.safeParse(body)
     if (!validationResult.success) {
-      const errorMessages = validationResult.error.errors.map(err => err.message).join(' ')
+      const errorMessages = validationResult.error.errors.map((err: any) => err.message).join(' ')
       return NextResponse.json({ error: errorMessages }, { status: 400 })
     }
 
@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
 
       if (lastAssignedId) {
         // Find index of last assignee in active team list
-        const lastIdx = teamMembers.findIndex(m => m.id === lastAssignedId)
+        const lastIdx = teamMembers.findIndex((m: any) => m.id === lastAssignedId)
         // Next assignee index
         const nextIdx = lastIdx === -1 ? 0 : (lastIdx + 1) % teamMembers.length
         assignedToId = teamMembers[nextIdx].id

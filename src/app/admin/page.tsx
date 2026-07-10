@@ -21,7 +21,7 @@ export default function AdminDashboard() {
   // Queue State
   const [jobs, setJobs] = useState<any[]>([])
   const [loadingJobs, setLoadingJobs] = useState(false)
-  
+
   // Prizes State
   const [claims, setClaims] = useState<any[]>([])
   const [loadingClaims, setLoadingClaims] = useState(false)
@@ -245,25 +245,22 @@ export default function AdminDashboard() {
         <div className="flex overflow-x-auto whitespace-nowrap border-b border-white/10 mb-6 font-semibold scrollbar-none">
           <button
             onClick={() => setActiveTab('leads')}
-            className={`flex-shrink-0 px-4 sm:px-6 py-3 border-b-2 text-sm transition-all duration-200 ${
-              activeTab === 'leads' ? 'border-orange-500 text-orange-500' : 'border-transparent text-gray-400 hover:text-white'
-            }`}
+            className={`flex-shrink-0 px-4 sm:px-6 py-3 border-b-2 text-sm transition-all duration-200 ${activeTab === 'leads' ? 'border-orange-500 text-orange-500' : 'border-transparent text-gray-400 hover:text-white'
+              }`}
           >
             📋 Lead Records
           </button>
           <button
             onClick={() => setActiveTab('queue')}
-            className={`flex-shrink-0 px-4 sm:px-6 py-3 border-b-2 text-sm transition-all duration-200 ${
-              activeTab === 'queue' ? 'border-orange-500 text-orange-500' : 'border-transparent text-gray-400 hover:text-white'
-            }`}
+            className={`flex-shrink-0 px-4 sm:px-6 py-3 border-b-2 text-sm transition-all duration-200 ${activeTab === 'queue' ? 'border-orange-500 text-orange-500' : 'border-transparent text-gray-400 hover:text-white'
+              }`}
           >
             ⚙️ Background Job Queue
           </button>
           <button
             onClick={() => setActiveTab('prizes')}
-            className={`flex-shrink-0 px-4 sm:px-6 py-3 border-b-2 text-sm transition-all duration-200 ${
-              activeTab === 'prizes' ? 'border-orange-500 text-orange-500' : 'border-transparent text-gray-400 hover:text-white'
-            }`}
+            className={`flex-shrink-0 px-4 sm:px-6 py-3 border-b-2 text-sm transition-all duration-200 ${activeTab === 'prizes' ? 'border-orange-500 text-orange-500' : 'border-transparent text-gray-400 hover:text-white'
+              }`}
           >
             🏆 Prize Claim Verification
           </button>
@@ -333,14 +330,14 @@ export default function AdminDashboard() {
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
               <h2 className="text-lg font-bold">Asynchronous Task Queue (Last 50 Jobs)</h2>
-              <button 
+              <button
                 onClick={fetchJobs}
                 className="px-4 py-1.5 bg-white/5 border border-white/10 hover:bg-white/10 text-xs rounded-lg transition w-full sm:w-auto text-center"
               >
                 🔄 Refresh Queue
               </button>
             </div>
-            
+
             {loadingJobs ? (
               <div className="py-12 text-center text-gray-500">Loading active task queue logs...</div>
             ) : jobs.length === 0 ? (
@@ -362,13 +359,12 @@ export default function AdminDashboard() {
                     <tr key={job.id} className="border-b border-white/5 hover:bg-white/5 transition">
                       <td className="py-3.5 px-4 font-mono text-xs font-semibold text-orange-400">{job.job_type}</td>
                       <td className="py-3.5 px-4">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                          job.status === 'completed' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
-                          job.status === 'running' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20 animate-pulse' :
-                          job.status === 'pending' ? 'bg-white/5 text-gray-400 border-white/5' :
-                          job.status === 'failed_permanently' ? 'bg-red-500/10 text-red-400 border-red-500/30 font-black' :
-                          'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
-                        }`}>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${job.status === 'completed' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                            job.status === 'running' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20 animate-pulse' :
+                              job.status === 'pending' ? 'bg-white/5 text-gray-400 border-white/5' :
+                                job.status === 'failed_permanently' ? 'bg-red-500/10 text-red-400 border-red-500/30 font-black' :
+                                  'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
+                          }`}>
                           {job.status}
                         </span>
                       </td>
@@ -404,7 +400,7 @@ export default function AdminDashboard() {
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
               <h2 className="text-lg font-bold">Score Guesses & Prize Claims Queue</h2>
-              <button 
+              <button
                 onClick={fetchClaims}
                 className="px-4 py-1.5 bg-white/5 border border-white/10 hover:bg-white/10 text-xs rounded-lg transition w-full sm:w-auto text-center"
               >
@@ -446,18 +442,16 @@ export default function AdminDashboard() {
                         <span className="text-green-400">{claim.actual_score}</span>
                       </td>
                       <td className="py-4 px-4">
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
-                          claim.difference <= 2 ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-white/5 text-gray-500'
-                        }`}>
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded ${claim.difference <= 2 ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-white/5 text-gray-500'
+                          }`}>
                           ±{claim.difference} pts
                         </span>
                       </td>
                       <td className="py-4 px-4">
-                        <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold border uppercase ${
-                          claim.status === 'approved' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
-                          claim.status === 'rejected' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
-                          'bg-yellow-500/10 text-yellow-400 border-yellow-500/20 animate-pulse'
-                        }`}>
+                        <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold border uppercase ${claim.status === 'approved' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                            claim.status === 'rejected' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                              'bg-yellow-500/10 text-yellow-400 border-yellow-500/20 animate-pulse'
+                          }`}>
                           {claim.status}
                         </span>
                       </td>

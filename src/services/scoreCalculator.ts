@@ -162,10 +162,10 @@ export async function generateAuditData(website: string): Promise<AuditData> {
   ]
 
   // Build improvements list from failures/warnings
-  websiteItems.forEach(item => {
+  websiteItems.forEach((item: any) => {
     if (item.status === 'fail' || item.status === 'warning') improvements.push(`❌ ${item.metric}: ${item.description}`)
   })
-  seoItems.forEach(item => {
+  seoItems.forEach((item: any) => {
     if (item.status === 'fail' || item.status === 'warning') improvements.push(`❌ ${item.metric}: ${item.description}`)
   })
 

@@ -101,9 +101,9 @@ export default function ReportPage() {
 
     // Count statistics
     const allItems = [...websiteItems, ...seoItems, ...googleItems, ...socialItems]
-    const pass = allItems.filter(i => i.status === 'pass').length
-    const warn = allItems.filter(i => i.status === 'warning').length
-    const fail = allItems.filter(i => i.status === 'fail').length
+    const pass = allItems.filter((i: any) => i.status === 'pass').length
+    const warn = allItems.filter((i: any) => i.status === 'warning').length
+    const fail = allItems.filter((i: any) => i.status === 'fail').length
 
     return {
       groups,
