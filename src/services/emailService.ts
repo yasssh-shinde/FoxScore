@@ -11,7 +11,7 @@ export async function sendAuditEmail(lead: Lead, audit: AuditResult): Promise<bo
     const plainTextContent = `
 Hi ${lead.full_name},
 
-Thank you for participating in the Digital Health Score Challenge at our event. It was a pleasure connecting with you and learning about ${lead.company_name}.
+Thank you for participating in the Digital Health Score Challenge at Marathi Udyojakta Divas. It was a pleasure connecting with you and learning about ${lead.company_name}.
 
 We've analyzed your online presence. Here is your report summary:
 
@@ -40,7 +40,7 @@ seofox.io
   
   <p>Hi <strong>${lead.full_name}</strong>,</p>
   
-  <p>Thank you for participating in the <strong>Digital Health Score Challenge</strong> at our exhibition event. It was a pleasure connecting with you and learning about <strong>${lead.company_name}</strong>.</p>
+  <p>Thank you for participating in the <strong>Digital Health Score Challenge</strong> at <strong>Marathi Udyojakta Divas</strong>. It was a pleasure connecting with you and learning about <strong>${lead.company_name}</strong>.</p>
   
   <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; text-align: center; margin: 20px 0;">
     <p style="margin: 0; font-size: 14px; text-transform: uppercase; color: #666; letter-spacing: 1px;">Overall Score</p>
