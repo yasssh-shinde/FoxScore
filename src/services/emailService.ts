@@ -31,10 +31,10 @@ As a special thank-you for participating, we're offering ${lead.company_name} an
 
 To claim this exclusive offer, reply directly to this email or contact our team.
 
-Best regards,
+Thank You,
 Yash Shinde
-Marketing Head | seofox.io
-contact@seofox.io | +91 876-753-2568
+Marketing Head
+seofox.io
     `
 
     const htmlContent = `
@@ -72,10 +72,11 @@ contact@seofox.io | +91 876-753-2568
   
   <p>Simply reply to this email or reach out to us at <strong>contact@seofox.io</strong> to get started.</p>
 
-  <p style="margin-top: 40px; font-size: 12px; color: #777;">
-    <strong>seofox.io</strong><br />
-    Office No. 17, Vedant Complex, Vartak Nagar, Thane<br />
-    🌐 <a href="https://seofox.io" style="color: #FF6B35;">seofox.io</a> | 📞 +91 876-753-2568
+  <p style="margin-top: 40px; font-size: 14px; color: #333; font-weight: bold;">
+    Thank You,<br />
+    Yash Shinde<br />
+    Marketing Head<br />
+    seofox.io
   </p>
 </div>
     `
