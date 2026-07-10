@@ -158,12 +158,14 @@ export async function runNextJobs(): Promise<number> {
     return 0
   }
 
-  console.log(`🚀 Found ${jobs.length} background jobs to run concurrently...`)
-  
-  // Process all jobs concurrently
-  const results = await Promise.allSettled(
-    jobs.map((job: any) => processJob(job.id))
-  )
+  console.log(`🚀 Found ${jobs.length} background jobs to run...`)
+
+  // Process jobs sequentially with 600ms delay (respects Resend 2 req/sec rate limit)
+  const results = []
+  for (const job of jobs) {
+    results.push(await Promise.resolve(processJob(job.id)))
+    if (jobs.length > 1) await new Promise(r => setTimeout(r, 600))
+  }
 
   let processedCount = 0
   results.forEach((result) => {
