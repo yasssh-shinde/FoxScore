@@ -54,7 +54,7 @@ export default function AdminDashboard() {
 
         const scores = leadsData
           .map((l: any) => l.actual_score)
-          .filter(s => s !== null) as number[]
+          .filter((s: any) => s !== null) as number[]
 
         setStats({
           totalLeads: leadsData.length,
