@@ -12,6 +12,7 @@ export async function scanWebsite(url: string) {
     hasRobots: false,
     hasSitemap: false,
     error: null as string | null,
+    html: '' as string,
   }
 
   try {
@@ -36,6 +37,7 @@ export async function scanWebsite(url: string) {
     if (response.ok) {
       result.responds = true
       const html = await response.text()
+      result.html = html
 
       // Parse HTML for basic tags
       const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i)

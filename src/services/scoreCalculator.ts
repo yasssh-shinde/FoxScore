@@ -158,12 +158,12 @@ export async function generateAuditData(website: string): Promise<AuditData> {
     },
   ]
 
-  // Build improvements list from failures
+  // Build improvements list from failures/warnings
   websiteItems.forEach(item => {
-    if (item.status === 'fail') improvements.push(`❌ ${item.metric}: ${item.description}`)
+    if (item.status === 'fail' || item.status === 'warning') improvements.push(`❌ ${item.metric}: ${item.description}`)
   })
   seoItems.forEach(item => {
-    if (item.status === 'fail') improvements.push(`❌ ${item.metric}: ${item.description}`)
+    if (item.status === 'fail' || item.status === 'warning') improvements.push(`❌ ${item.metric}: ${item.description}`)
   })
 
   // Add auto-detected strengths
@@ -173,16 +173,34 @@ export async function generateAuditData(website: string): Promise<AuditData> {
   if (scan.hasRobots) strengths.push('✅ Robots.txt Present')
   if (scan.responds) strengths.push('✅ Website Responsive')
 
-  // Ensure we have at least 3 improvements
-  if (improvements.length === 0) {
-    improvements.push('❌ Overall SEO improvements needed')
-  }
-  // Ensure we have at least 3 strengths
-  while (strengths.length < 3) {
-    strengths.push('✅ Basic web presence established')
+  // Ensure we have at least 4 improvements
+  const defaultImprovements = [
+    '❌ Schema Markup: Missing structured data markup',
+    '❌ AI Readiness: Missing question-format headings',
+    '❌ Accessibility: Some elements lack accessible labels',
+    '❌ Social Tags: Open Graph metadata incomplete'
+  ]
+  let impIdx = 0
+  while (improvements.length < 4 && impIdx < defaultImprovements.length) {
+    improvements.push(defaultImprovements[impIdx])
+    impIdx++
   }
 
-  const selectedIssues = improvements.slice(0, 3)
+  // Ensure we have at least 4 strengths
+  const defaultStrengths = [
+    '✅ Basic layout structures configured',
+    '✅ Page assets crawlable',
+    '✅ Main semantic elements present',
+    '✅ Basic web presence established'
+  ]
+  let strIdx = 0
+  while (strengths.length < 4 && strIdx < defaultStrengths.length) {
+    strengths.push(defaultStrengths[strIdx])
+    strIdx++
+  }
+
+  const selectedIssues = improvements.slice(0, 4)
+  const selectedStrengths = strengths.slice(0, 4)
 
   return {
     website: websiteItems,
@@ -190,6 +208,7 @@ export async function generateAuditData(website: string): Promise<AuditData> {
     google: googleItems,
     social: socialItems,
     improvements: selectedIssues,
-    strengths: strengths.slice(0, 3),
+    strengths: selectedStrengths,
+    html: scan.html,
   }
 }

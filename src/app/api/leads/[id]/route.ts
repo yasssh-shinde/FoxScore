@@ -3,13 +3,14 @@ import { supabase } from '@/lib/supabase'
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const { data: lead } = await supabase
       .from('leads')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (!lead) {
@@ -19,7 +20,7 @@ export async function GET(
     const { data: audit } = await supabase
       .from('audit_results')
       .select('*')
-      .eq('lead_id', params.id)
+      .eq('lead_id', id)
       .single()
 
     return NextResponse.json({ lead, audit })

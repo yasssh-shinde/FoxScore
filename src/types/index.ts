@@ -37,6 +37,7 @@ export type AuditData = {
   social: AuditItem[]
   improvements: string[]
   strengths: string[]
+  html?: string
 }
 
 export type AuditItem = {
