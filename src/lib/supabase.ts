@@ -1,37 +1,59 @@
 import { createClient } from '@supabase/supabase-js'
 
-let supabase: any = null
-let supabaseAdmin: any = null
+let supabaseInstance: any = null
+let supabaseAdminInstance: any = null
+let initialized = false
 
 function initializeClients() {
-  if (supabase && supabaseAdmin) return
+  if (initialized) return
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
+  initialized = true
+
   if (!supabaseUrl || !supabaseKey) {
-    throw new Error('supabaseUrl and supabaseKey are required')
+    return
   }
 
-  supabase = createClient(supabaseUrl, supabaseKey)
-  supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey || supabaseKey)
-}
-
-export function getSupabase() {
-  initializeClients()
-  return supabase
+  supabaseInstance = createClient(supabaseUrl, supabaseKey)
+  supabaseAdminInstance = createClient(supabaseUrl, supabaseServiceKey || supabaseKey)
 }
 
 export function getSupabaseAdmin() {
-  initializeClients()
-  return supabaseAdmin
+  if (!supabaseAdminInstance) {
+    initializeClients()
+  }
+  if (!supabaseAdminInstance) {
+    throw new Error('Supabase not initialized. Ensure environment variables are set.')
+  }
+  return supabaseAdminInstance
 }
 
-// For backward compatibility, try to initialize at import time but don't fail
-try {
-  initializeClients()
-} catch {
-  // Will be initialized when first used
+export function getSupabase() {
+  if (!supabaseInstance) {
+    initializeClients()
+  }
+  if (!supabaseInstance) {
+    throw new Error('Supabase not initialized. Ensure environment variables are set.')
+  }
+  return supabaseInstance
 }
+
+// Export lazy getter proxy objects for backward compatibility
+export const supabase = new Proxy({} as any, {
+  get(_target, prop) {
+    return getSupabase()[prop as string]
+  }
+})
+
+export const supabaseAdmin = new Proxy({} as any, {
+  get(_target, prop) {
+    return getSupabaseAdmin()[prop as string]
+  }
+})
+
+// Try to initialize at import time, but don't fail
+initializeClients()
 
