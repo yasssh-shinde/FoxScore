@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
           id,
           assigned_to,
           status,
-          team_members(name, email)
+          team_members!assigned_to(name, email)
         ),
         audit_results(overall_score)`,
         { count: 'exact' }
@@ -35,13 +35,37 @@ export async function GET(req: NextRequest) {
 
     query = query.order(sortBy, { ascending: sortOrder === 'asc' })
 
-    const { data, error, count } = await query.range(
+    let { data, error, count } = await query.range(
       (page - 1) * limit,
       page * limit - 1
     )
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      console.warn(`⚠️ /api/leads joined query failed: ${error.message}. Falling back to simple leads query...`)
+      
+      let fallbackQuery = supabaseAdmin
+        .from('leads')
+        .select('*', { count: 'exact' })
+
+      if (search) {
+        fallbackQuery = fallbackQuery.or(
+          `full_name.ilike.%${search}%,company_name.ilike.%${search}%,email.ilike.%${search}%`
+        )
+      }
+
+      fallbackQuery = fallbackQuery.order(sortBy, { ascending: sortOrder === 'asc' })
+
+      const fallbackRes = await fallbackQuery.range(
+        (page - 1) * limit,
+        page * limit - 1
+      )
+
+      if (fallbackRes.error) {
+        return NextResponse.json({ error: fallbackRes.error.message }, { status: 400 })
+      }
+
+      data = fallbackRes.data
+      count = fallbackRes.count
     }
 
     return NextResponse.json({
@@ -91,25 +115,27 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Automated Round-Robin Lead Assignment
-    // Fetch all active team members ordered by ID / created_at
-    const { data: teamMembers, error: teamError } = await supabaseAdmin
-      .from('team_members')
-      .select('id, name')
-      .eq('status', 'active')
-      .order('created_at', { ascending: true })
-
-    if (teamError) throw teamError
-
-    let assignedToId: string | null = null
-
-    if (teamMembers && teamMembers.length > 0) {
-      // Find the last created lead assignment
-      const { data: lastAssignment } = await supabaseAdmin
+    // Fetch active team members and last lead assignment in parallel
+    const [teamRes, lastAssignRes] = await Promise.all([
+      supabaseAdmin
+        .from('team_members')
+        .select('id, name')
+        .eq('status', 'active')
+        .order('created_at', { ascending: true }),
+      supabaseAdmin
         .from('lead_assignments')
         .select('assigned_to')
         .order('created_at', { ascending: false })
         .limit(1)
+    ])
 
+    if (teamRes.error) throw teamRes.error
+
+    const teamMembers = teamRes.data
+    const lastAssignment = lastAssignRes.data
+    let assignedToId: string | null = null
+
+    if (teamMembers && teamMembers.length > 0) {
       const lastAssignedId = lastAssignment?.[0]?.assigned_to
 
       if (lastAssignedId) {

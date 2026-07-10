@@ -10,14 +10,14 @@ import { leadFormSchema, LeadFormData } from '@/lib/validators/formSchema'
 export default function Challenge() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
-  const [guessValue, setGuessValue] = useState(70)
+  const [predictedScore, setPredictedScore] = useState<number | null>(null)
 
-  const { register, handleSubmit, formState: { errors } } = useForm<LeadFormData>({
+  const { register, handleSubmit, setValue, formState: { errors } } = useForm<LeadFormData>({
     resolver: zodResolver(leadFormSchema),
     mode: 'onBlur',
     reValidateMode: 'onChange',
     defaultValues: {
-      guessed_score: 70,
+      guessed_score: 0,
       terms_accepted: false,
       google_business_url: '',
       instagram_url: '',
@@ -40,7 +40,7 @@ export default function Challenge() {
         body: JSON.stringify({
           ...data,
           website_url: websiteUrl,
-          guessed_score: guessValue,
+          guessed_score: predictedScore as number,
         }),
       })
 
@@ -228,73 +228,53 @@ export default function Challenge() {
               </div>
             </div>
 
-            {/* Social Media */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-3">Social Media URLs (Optional)</label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <input
-                    aria-label="Instagram Profile Link"
-                    {...register('instagram_url')}
-                    type="url"
-                    placeholder="Instagram URL"
-                    aria-invalid={errors.instagram_url ? "true" : "false"}
-                    className={`w-full bg-white/[0.03] border rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none transition-all duration-200 text-sm ${
-                      errors.instagram_url ? 'border-red-500' : 'border-white/10 hover:border-white/20 focus:border-[#FF6B35]'
-                    }`}
-                  />
-                  {errors.instagram_url && <span className="text-red-400 text-[10px] mt-1 block">⚠️ Invalid URL</span>}
-                </div>
-                
-                <div>
-                  <input
-                    aria-label="Facebook Page Link"
-                    {...register('facebook_url')}
-                    type="url"
-                    placeholder="Facebook URL"
-                    aria-invalid={errors.facebook_url ? "true" : "false"}
-                    className={`w-full bg-white/[0.03] border rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none transition-all duration-200 text-sm ${
-                      errors.facebook_url ? 'border-red-500' : 'border-white/10 hover:border-white/20 focus:border-[#FF6B35]'
-                    }`}
-                  />
-                  {errors.facebook_url && <span className="text-red-400 text-[10px] mt-1 block">⚠️ Invalid URL</span>}
-                </div>
 
-                <div>
-                  <input
-                    aria-label="LinkedIn Profile Link"
-                    {...register('linkedin_url')}
-                    type="url"
-                    placeholder="LinkedIn URL"
-                    aria-invalid={errors.linkedin_url ? "true" : "false"}
-                    className={`w-full bg-white/[0.03] border rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none transition-all duration-200 text-sm ${
-                      errors.linkedin_url ? 'border-red-500' : 'border-white/10 hover:border-white/20 focus:border-[#FF6B35]'
-                    }`}
-                  />
-                  {errors.linkedin_url && <span className="text-red-400 text-[10px] mt-1 block">⚠️ Invalid URL</span>}
-                </div>
-              </div>
-            </div>
 
-            {/* Score Guess (0-100) */}
-            <div>
-              <label htmlFor="guessed_score" className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-3">
-                Guess Your Digital Health Score: <span className="text-[#FF6B35] text-base font-extrabold">{guessValue}/100</span>
-              </label>
-              <input
-                id="guessed_score"
-                type="range"
-                min="0"
-                max="100"
-                value={guessValue}
-                onChange={(e) => setGuessValue(parseInt(e.target.value))}
-                className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-[#FF6B35]"
-              />
-              <div className="flex justify-between text-xs text-gray-500 mt-2">
-                <span>0</span>
-                <span>50</span>
-                <span>100</span>
+            {/* Predicted Digital Health Score Selector */}
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1">
+                  Guess Your Digital Health Score *
+                </label>
+                <p className="text-gray-400 text-xs">
+                  Select the score you think your website will receive.
+                </p>
               </div>
+
+              <div 
+                className="grid grid-cols-5 gap-3" 
+                role="radiogroup" 
+                aria-label="Guess your Digital Health Score from 1 to 10"
+              >
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => {
+                  const isSelected = predictedScore === score
+                  return (
+                    <button
+                      key={score}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      onClick={() => {
+                        setPredictedScore(score)
+                        setValue('guessed_score', score)
+                      }}
+                      className={`h-12 w-full rounded-xl font-bold transition-all duration-200 border text-base flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/50 ${
+                        isSelected
+                          ? 'bg-[#FF6B35] border-[#FF6B35] text-white shadow-lg shadow-[#FF6B35]/25 scale-105 font-extrabold'
+                          : 'bg-white/[0.03] border-white/10 text-gray-300 hover:bg-white/10 hover:border-white/20 hover:text-white'
+                      }`}
+                    >
+                      {score}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {predictedScore === null && (
+                <p className="text-[#FF8C42] text-xs mt-1.5 flex items-center gap-1 animate-pulse">
+                  ⚠️ Please select a predicted Digital Health Score to proceed.
+                </p>
+              )}
             </div>
 
             {/* Terms */}
@@ -323,7 +303,7 @@ export default function Challenge() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || predictedScore === null}
               className="w-full gradient-btn py-3.5 rounded-xl font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
             >
               {isLoading ? (

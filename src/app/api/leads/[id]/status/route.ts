@@ -12,23 +12,26 @@ export async function GET(
       return NextResponse.json({ error: 'Missing ID parameter' }, { status: 400 })
     }
 
-    // 1. Fetch Lead
-    const { data: lead, error: leadError } = await supabaseAdmin
-      .from('leads')
-      .select('*')
-      .eq('id', id)
-      .single()
+    // 1. Fetch Lead & Audit Results in parallel
+    const [leadRes, auditRes] = await Promise.all([
+      supabaseAdmin
+        .from('leads')
+        .select('*')
+        .eq('id', id)
+        .single(),
+      supabaseAdmin
+        .from('audit_results')
+        .select('*')
+        .eq('lead_id', id)
+        .single()
+    ])
 
-    if (leadError || !lead) {
+    if (leadRes.error || !leadRes.data) {
       return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
     }
 
-    // 2. Fetch Audit Results
-    const { data: audit, error: auditError } = await supabaseAdmin
-      .from('audit_results')
-      .select('*')
-      .eq('lead_id', id)
-      .single()
+    const lead = leadRes.data
+    const audit = auditRes.data
 
     // If actual_score is populated, it means the background worker finished the audit
     if (lead.actual_score !== null && audit) {

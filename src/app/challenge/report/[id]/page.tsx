@@ -3,7 +3,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { supabase } from '@/lib/supabase'
 import { Lead, AuditResult } from '@/types'
 
 type GroupedCheckItem = {
@@ -27,20 +26,11 @@ export default function ReportPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const { data: leadData } = await supabase
-          .from('leads')
-          .select('*')
-          .eq('id', leadId)
-          .single()
-
-        const { data: auditData } = await supabase
-          .from('audit_results')
-          .select('*')
-          .eq('lead_id', leadId)
-          .single()
-
-        setLead(leadData)
-        setAudit(auditData)
+        const res = await fetch(`/api/leads/${leadId}`)
+        if (!res.ok) throw new Error('Failed to fetch report details')
+        const data = await res.json()
+        setLead(data.lead)
+        setAudit(data.audit)
       } catch (error) {
         console.error('Error fetching audit report:', error)
       } finally {

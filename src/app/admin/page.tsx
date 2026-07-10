@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
@@ -43,29 +42,26 @@ export default function AdminDashboard() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true)
-      const { data: leadsData } = await supabase
-        .from('leads')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(100)
+      const [leadsRes, statsRes] = await Promise.all([
+        fetch('/api/leads?limit=100').catch(() => null),
+        fetch('/api/admin/stats').catch(() => null)
+      ])
 
-      if (leadsData) {
-        setLeads(leadsData)
+      if (leadsRes && leadsRes.ok) {
+        const leadsData = await leadsRes.json()
+        setLeads(leadsData.data || [])
+      } else {
+        console.warn('⚠️ Leads fetch failed or returned non-200 response.')
+      }
 
-        const scores = leadsData
-          .map(l => l.actual_score)
-          .filter(s => s !== null) as number[]
-
-        setStats({
-          totalLeads: leadsData.length,
-          averageScore: scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0,
-          highestScore: scores.length > 0 ? Math.max(...scores) : 0,
-          lowestScore: scores.length > 0 ? Math.min(...scores) : 0,
-          prizeWinners: leadsData.filter(l => l.won_prize).length,
-        })
+      if (statsRes && statsRes.ok) {
+        const statsData = await statsRes.json()
+        setStats(statsData.stats)
+      } else {
+        console.warn('⚠️ Stats fetch failed or returned non-200 response.')
       }
     } catch (error) {
-      console.error('Error fetching dashboard stats:', error)
+      console.error('Error fetching dashboard data:', error)
     } finally {
       setLoading(false)
     }
@@ -174,7 +170,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white py-16 px-6">
+    <main className="min-h-screen bg-slate-950 text-white py-8 px-4 sm:py-12 sm:px-6 md:py-16 md:px-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <motion.div
@@ -182,18 +178,18 @@ export default function AdminDashboard() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-10"
         >
-          <div className="flex items-center justify-between mb-8">
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-orange-500 to-orange-400 bg-clip-text text-transparent">FoxScore Admin Console</h1>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-orange-500 to-orange-400 bg-clip-text text-transparent">FoxScore Admin Console</h1>
             <button
               onClick={handleExport}
-              className="bg-green-600 hover:bg-green-700 px-6 py-2.5 rounded-lg text-white font-semibold transition"
+              className="bg-green-600 hover:bg-green-700 px-6 py-2.5 rounded-lg text-white font-semibold transition text-sm sm:text-base w-full sm:w-auto text-center"
             >
               📥 Export Leads CSV
             </button>
           </div>
 
           {/* Navigation */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
             <Link href="/admin/setup" className="p-4 glass-card hover:bg-white/10 transition rounded-lg text-center border-2 border-orange-500/25">
               <div className="text-3xl mb-2">🚀</div>
               <div className="font-semibold text-sm">Setup</div>
@@ -223,7 +219,7 @@ export default function AdminDashboard() {
         </motion.div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-10">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-10">
           {[
             { label: 'Total Leads', value: stats.totalLeads, icon: '👥' },
             { label: 'Avg Score', value: `${stats.averageScore}/100`, icon: '📊' },
@@ -246,10 +242,10 @@ export default function AdminDashboard() {
         </div>
 
         {/* Tab Toggle Control */}
-        <div className="flex border-b border-white/10 mb-6 font-semibold">
+        <div className="flex overflow-x-auto whitespace-nowrap border-b border-white/10 mb-6 font-semibold scrollbar-none">
           <button
             onClick={() => setActiveTab('leads')}
-            className={`px-6 py-3 border-b-2 text-sm transition-all duration-200 ${
+            className={`flex-shrink-0 px-4 sm:px-6 py-3 border-b-2 text-sm transition-all duration-200 ${
               activeTab === 'leads' ? 'border-orange-500 text-orange-500' : 'border-transparent text-gray-400 hover:text-white'
             }`}
           >
@@ -257,7 +253,7 @@ export default function AdminDashboard() {
           </button>
           <button
             onClick={() => setActiveTab('queue')}
-            className={`px-6 py-3 border-b-2 text-sm transition-all duration-200 ${
+            className={`flex-shrink-0 px-4 sm:px-6 py-3 border-b-2 text-sm transition-all duration-200 ${
               activeTab === 'queue' ? 'border-orange-500 text-orange-500' : 'border-transparent text-gray-400 hover:text-white'
             }`}
           >
@@ -265,7 +261,7 @@ export default function AdminDashboard() {
           </button>
           <button
             onClick={() => setActiveTab('prizes')}
-            className={`px-6 py-3 border-b-2 text-sm transition-all duration-200 ${
+            className={`flex-shrink-0 px-4 sm:px-6 py-3 border-b-2 text-sm transition-all duration-200 ${
               activeTab === 'prizes' ? 'border-orange-500 text-orange-500' : 'border-transparent text-gray-400 hover:text-white'
             }`}
           >
@@ -280,10 +276,10 @@ export default function AdminDashboard() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="glass-card overflow-x-auto bg-white/[0.01] border border-white/5 p-6 rounded-xl"
+            className="glass-card overflow-x-auto bg-white/[0.01] border border-white/5 p-4 sm:p-6 rounded-xl"
           >
             <h2 className="text-lg font-bold mb-4">Recent Challenge Submissions</h2>
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[800px] text-sm">
               <thead>
                 <tr className="border-b border-white/10 text-gray-400 text-left">
                   <th className="py-3 px-4">Name</th>
@@ -333,13 +329,13 @@ export default function AdminDashboard() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="glass-card overflow-x-auto bg-white/[0.01] border border-white/5 p-6 rounded-xl"
+            className="glass-card overflow-x-auto bg-white/[0.01] border border-white/5 p-4 sm:p-6 rounded-xl"
           >
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
               <h2 className="text-lg font-bold">Asynchronous Task Queue (Last 50 Jobs)</h2>
               <button 
                 onClick={fetchJobs}
-                className="px-4 py-1.5 bg-white/5 border border-white/10 hover:bg-white/10 text-xs rounded-lg transition"
+                className="px-4 py-1.5 bg-white/5 border border-white/10 hover:bg-white/10 text-xs rounded-lg transition w-full sm:w-auto text-center"
               >
                 🔄 Refresh Queue
               </button>
@@ -350,7 +346,7 @@ export default function AdminDashboard() {
             ) : jobs.length === 0 ? (
               <div className="py-12 text-center text-gray-500">No background jobs registered in queue logs.</div>
             ) : (
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[900px] text-sm">
                 <thead>
                   <tr className="border-b border-white/10 text-gray-400 text-left">
                     <th className="py-3 px-4">Task Name</th>
@@ -404,13 +400,13 @@ export default function AdminDashboard() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="glass-card overflow-x-auto bg-white/[0.01] border border-white/5 p-6 rounded-xl"
+            className="glass-card overflow-x-auto bg-white/[0.01] border border-white/5 p-4 sm:p-6 rounded-xl"
           >
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
               <h2 className="text-lg font-bold">Score Guesses & Prize Claims Queue</h2>
               <button 
                 onClick={fetchClaims}
-                className="px-4 py-1.5 bg-white/5 border border-white/10 hover:bg-white/10 text-xs rounded-lg transition"
+                className="px-4 py-1.5 bg-white/5 border border-white/10 hover:bg-white/10 text-xs rounded-lg transition w-full sm:w-auto text-center"
               >
                 🔄 Refresh Claims
               </button>
@@ -421,7 +417,7 @@ export default function AdminDashboard() {
             ) : claims.length === 0 ? (
               <div className="py-12 text-center text-gray-500">No prize claims logged yet.</div>
             ) : (
-              <table className="w-full text-sm text-left">
+              <table className="w-full min-w-[1000px] text-sm text-left">
                 <thead>
                   <tr className="border-b border-white/10 text-gray-400">
                     <th className="py-3 px-4">Ref ID</th>

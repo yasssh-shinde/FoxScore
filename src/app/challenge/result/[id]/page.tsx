@@ -126,8 +126,8 @@ export default function ResultPage() {
     )
   }
 
-  const scoreDiff = Math.abs(lead.guessed_score - audit.overall_score)
-  const won = scoreDiff <= 2
+  const won = lead.won_prize
+  const scoreDiff = Math.abs(lead.guessed_score - Math.round(audit.overall_score / 10))
 
   const finalImprovements = audit.audit_data?.improvements?.slice(0, 4) || []
   const finalStrengths = audit.audit_data?.strengths?.slice(0, 4) || []
@@ -204,10 +204,10 @@ export default function ResultPage() {
                 className="text-center"
               >
                 <div className="text-6xl font-black bg-gradient-to-r from-[#FF6B35] to-[#FF8C42] bg-clip-text text-transparent tracking-tight">
-                  {animatedScore}
+                  {Math.round(animatedScore / 10)}
                 </div>
                 <div className="text-gray-400 text-xs font-semibold tracking-wider uppercase mt-1">Overall Score</div>
-                <div className="text-gray-500 text-xs mt-0.5">out of 100</div>
+                <div className="text-gray-500 text-xs mt-0.5">out of 10</div>
               </motion.div>
             </div>
           </div>
@@ -240,11 +240,11 @@ export default function ResultPage() {
                   </div>
                   <div className="text-center py-2 px-3 bg-white/5 rounded-xl border border-white/5">
                     <p className="text-xs text-gray-400 uppercase tracking-wider">Actual Score</p>
-                    <p className="text-xl font-bold text-[#FF8C42] mt-1">{audit.overall_score}</p>
+                    <p className="text-xl font-bold text-[#FF8C42] mt-1">{Math.round(audit.overall_score / 10)}</p>
                   </div>
                 </div>
                 <p className="text-sm text-gray-400">
-                  {scoreDiff <= 10 
+                  {scoreDiff <= 1 
                     ? "So close! You were just a few points away. Keep optimizing! ⚡" 
                     : "No matches this time! Check your detailed report below to see how you can improve. 💪"}
                 </p>

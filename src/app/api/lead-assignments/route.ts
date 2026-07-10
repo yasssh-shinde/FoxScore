@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase'
 
 export async function GET(req: NextRequest) {
   try {
@@ -8,12 +8,12 @@ export async function GET(req: NextRequest) {
     const assignedTo = searchParams.get('assigned_to')
     const status = searchParams.get('status')
 
-    let query = supabase
+    let query = supabaseAdmin
       .from('lead_assignments')
       .select(`
         *,
         leads(full_name, company_name, email),
-        team_members(name, email)
+        team_members!assigned_to(name, email)
       `)
 
     if (leadId) query = query.eq('lead_id', leadId)
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('lead_assignments')
       .insert([{
         lead_id: body.lead_id,
@@ -73,7 +73,7 @@ export async function PATCH(req: NextRequest) {
       updateData.contacted_at = new Date().toISOString()
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('lead_assignments')
       .update(updateData)
       .eq('id', id)

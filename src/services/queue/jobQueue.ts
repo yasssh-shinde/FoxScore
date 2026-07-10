@@ -45,16 +45,20 @@ export async function processJob(jobId: string): Promise<boolean> {
     return true // Already processed
   }
 
-  // Update status to running and increment attempts
-  const nextAttempt = job.attempts + 1
-  await supabaseAdmin
-    .from('background_jobs')
-    .update({
-      status: 'running',
-      attempts: nextAttempt,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', jobId)
+  // Update status to running and increment attempts ONLY if it is not already running
+  const isAlreadyRunning = job.status === 'running'
+  const nextAttempt = isAlreadyRunning ? job.attempts : job.attempts + 1
+
+  if (!isAlreadyRunning) {
+    await supabaseAdmin
+      .from('background_jobs')
+      .update({
+        status: 'running',
+        attempts: nextAttempt,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', jobId)
+  }
 
   try {
     console.log(`⚙️ Executing job ${job.job_type} (Attempt ${nextAttempt}/${job.max_attempts})`)
@@ -111,26 +115,61 @@ export async function processJob(jobId: string): Promise<boolean> {
 }
 
 export async function runNextJobs(): Promise<number> {
-  // Pull all pending or failed jobs whose run_at <= NOW
-  const { data: jobs, error } = await supabaseAdmin
-    .from('background_jobs')
-    .select('id')
-    .or('status.eq.pending,status.eq.failed')
-    .lte('run_at', new Date().toISOString())
-    .order('run_at', { ascending: true })
-    .limit(10) // Process in batches of 10
+  let jobs = null
+  let error = null
+
+  // 1. Try using the atomic database dequeue RPC function
+  const rpcRes = await supabaseAdmin
+    .rpc('dequeue_next_jobs', { batch_size: 10 })
+
+  if (!rpcRes.error && rpcRes.data) {
+    jobs = rpcRes.data
+  } else {
+    console.warn(`⚠️ dequeue_next_jobs RPC failed or missing: ${rpcRes.error?.message || 'unknown'}. Falling back to standard query...`)
+    
+    // 2. Fallback: Pull pending or failed jobs whose run_at <= NOW
+    const queryRes = await supabaseAdmin
+      .from('background_jobs')
+      .select('id')
+      .or('status.eq.pending,status.eq.failed')
+      .lte('run_at', new Date().toISOString())
+      .order('run_at', { ascending: true })
+      .limit(10)
+
+    if (!queryRes.error && queryRes.data) {
+      jobs = queryRes.data
+      
+      // Update status to running manually since standard select doesn't lock rows
+      await Promise.all(
+        jobs.map(async (job: any) => {
+          await supabaseAdmin
+            .from('background_jobs')
+            .update({ status: 'running', updated_at: new Date().toISOString() })
+            .eq('id', job.id)
+        })
+      )
+    } else {
+      error = queryRes.error
+    }
+  }
 
   if (error || !jobs || jobs.length === 0) {
     return 0
   }
 
-  console.log(`🚀 Found ${jobs.length} background jobs to run...`)
-  let processedCount = 0
+  console.log(`🚀 Found ${jobs.length} background jobs to run concurrently...`)
+  
+  // Process all jobs concurrently
+  const results = await Promise.allSettled(
+    jobs.map((job: any) => processJob(job.id))
+  )
 
-  for (const job of jobs) {
-    const success = await processJob(job.id)
-    if (success) processedCount++
-  }
+  let processedCount = 0
+  results.forEach((result) => {
+    if (result.status === 'fulfilled' && result.value) {
+      processedCount++
+    }
+  })
 
   return processedCount
 }
@@ -158,11 +197,11 @@ export async function handleProcessAudit(payload: { lead_id: string }) {
   const actualScore = scoreResult.overall
 
   // 3. Game/Prize matching logic (Guessed score is now out of 100)
-  // Win condition: Guessed score is within ±2 points of actual score
-  const scoreDifference = Math.abs(lead.guessed_score - actualScore)
+  // Win condition: Guessed score (1-10 scale) multiplied by 10 is within ±2 points of actual score (0-100 scale)
+  const scoreDifference = Math.abs(lead.guessed_score * 10 - actualScore)
   const isWinner = scoreDifference <= 2
 
-  console.log(`🎯 Audit completed. Guess: ${lead.guessed_score}, Actual: ${actualScore}, Diff: ${scoreDifference}, Won: ${isWinner}`)
+  console.log(`🎯 Audit completed. Guess: ${lead.guessed_score} (x10 = ${lead.guessed_score * 10}), Actual: ${actualScore}, Diff: ${scoreDifference}, Won: ${isWinner}`)
 
   // 4. Save to audit_results (excluding raw HTML for database performance)
   const { error: auditErr } = await supabaseAdmin
@@ -192,13 +231,14 @@ export async function handleProcessAudit(payload: { lead_id: string }) {
 
   // 6. Create Prize Claim history record if won or guessed (Fail-safe: ignore if table missing)
   try {
+    const actualScoreOn10 = Math.round(actualScore / 10)
     const { error: claimErr } = await supabaseAdmin
       .from('prize_claims')
       .insert([{
         lead_id: leadId,
         guessed_score: lead.guessed_score,
-        actual_score: actualScore,
-        difference: scoreDifference,
+        actual_score: actualScoreOn10,
+        difference: Math.abs(lead.guessed_score - actualScoreOn10),
         status: isWinner ? 'pending' : 'rejected', // Rejected if did not match, pending admin approval if matched
         ip_address: lead.ip_address || null,
       }])

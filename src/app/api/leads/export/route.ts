@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase'
+
+export const dynamic = 'force-dynamic'
 
 function escapeCSV(value: any): string {
   if (value === null || value === undefined) return ''
@@ -13,7 +15,7 @@ function escapeCSV(value: any): string {
 export async function GET(req: NextRequest) {
   try {
     // Fetch all leads with related data
-    const { data: leads, error } = await supabase
+    const { data: leads, error } = await supabaseAdmin
       .from('leads')
       .select(`
         *,
@@ -22,7 +24,7 @@ export async function GET(req: NextRequest) {
           assigned_to,
           status,
           contacted_at,
-          team_members(name)
+          team_members!assigned_to(name)
         ),
         audit_results(overall_score)
       `)

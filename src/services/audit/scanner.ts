@@ -23,6 +23,20 @@ const FRAMEWORK_SIGNATURES = [
   { name: 'Svelte', regex: /__svelte|svelte-/i },
 ]
 
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 3000): Promise<Response> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    })
+    return response
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
+
 export async function scanWebsite(url: string, maxAttempts = 3): Promise<ScanResult> {
   const result: ScanResult = {
     url,
@@ -132,7 +146,7 @@ export async function scanWebsite(url: string, maxAttempts = 3): Promise<ScanRes
       try {
         const robotsUrl = new URL(result.finalUrl)
         robotsUrl.pathname = '/robots.txt'
-        const robotsResp = await fetch(robotsUrl.toString(), { 
+        const robotsResp = await fetchWithTimeout(robotsUrl.toString(), { 
           method: 'GET',
           headers: { 'User-Agent': 'FoxScoreAuditEngine/2.0' }
         }).catch(() => null)
@@ -146,7 +160,7 @@ export async function scanWebsite(url: string, maxAttempts = 3): Promise<ScanRes
       try {
         const sitemapUrl = new URL(result.finalUrl)
         sitemapUrl.pathname = '/sitemap.xml'
-        const sitemapResp = await fetch(sitemapUrl.toString(), { 
+        const sitemapResp = await fetchWithTimeout(sitemapUrl.toString(), { 
           method: 'HEAD',
           headers: { 'User-Agent': 'FoxScoreAuditEngine/2.0' }
         }).catch(() => null)
@@ -156,7 +170,7 @@ export async function scanWebsite(url: string, maxAttempts = 3): Promise<ScanRes
         } else {
           // Check common WordPress sitemap index
           sitemapUrl.pathname = '/sitemap_index.xml'
-          const wpSitemapResp = await fetch(sitemapUrl.toString(), { 
+          const wpSitemapResp = await fetchWithTimeout(sitemapUrl.toString(), { 
             method: 'HEAD',
             headers: { 'User-Agent': 'FoxScoreAuditEngine/2.0' }
           }).catch(() => null)

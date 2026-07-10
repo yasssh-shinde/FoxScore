@@ -1,7 +1,4 @@
-'use client'
-
 import Link from 'next/link'
-import { motion } from 'framer-motion'
 
 export default function Home() {
   return (
@@ -27,48 +24,36 @@ export default function Home() {
         <div className="max-w-4xl text-center">
           
           {/* Animated Badge */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.1 }}
-            className="inline-flex items-center gap-2 mb-6 px-4 py-1.5 rounded-full bg-gradient-to-r from-[#FF6B35]/15 to-blue-500/15 border border-[#FF6B35]/20 shadow-sm"
+          <div
+            className="animate-fade-in-scale delay-100 inline-flex items-center gap-2 mb-6 px-4 py-1.5 rounded-full bg-gradient-to-r from-[#FF6B35]/15 to-blue-500/15 border border-[#FF6B35]/20 shadow-sm"
           >
             <span className="flex h-2 w-2 relative">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FF6B35] opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-[#FF6B35]"></span>
             </span>
             <span className="text-xs md:text-sm font-bold text-[#FF6B35] tracking-wide uppercase">🚀 Free Digital Audit</span>
-          </motion.div>
+          </div>
 
           {/* Main Headline */}
-          <motion.h1
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="text-4xl sm:text-5xl md:text-7xl font-extrabold mb-6 leading-tight tracking-tight text-white"
+          <h1
+            className="animate-fade-in-up delay-200 text-4xl sm:text-5xl md:text-7xl font-extrabold mb-6 leading-tight tracking-tight text-white"
           >
             How Strong Is Your Business{' '}
             <span className="bg-gradient-to-r from-[#FF6B35] to-[#FF8C42] bg-clip-text text-transparent block sm:inline">
               Online?
             </span>
-          </motion.h1>
+          </h1>
 
           {/* Subheading */}
-          <motion.p
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="text-lg md:text-2xl text-gray-400 mb-10 max-w-2xl mx-auto font-medium"
+          <p
+            className="animate-fade-in-up delay-300 text-lg md:text-2xl text-gray-400 mb-10 max-w-2xl mx-auto font-medium"
           >
             Get your comprehensive Digital Health Score in under 60 seconds and find areas to optimize.
-          </motion.p>
+          </p>
 
           {/* Features Grid */}
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10 max-w-3xl mx-auto"
+          <div
+            className="animate-fade-in-up delay-400 grid grid-cols-2 md:grid-cols-4 gap-4 mb-10 max-w-3xl mx-auto"
           >
             {[
               { 
@@ -112,14 +97,11 @@ export default function Home() {
                 <div className="text-sm font-semibold text-gray-200">{item.text}</div>
               </div>
             ))}
-          </motion.div>
+          </div>
 
           {/* Prize Card */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.5 }}
-            className="glass-card mb-10 border-yellow-500/20 bg-gradient-to-r from-yellow-500/5 to-transparent p-6 rounded-2xl max-w-md mx-auto shadow-sm relative overflow-hidden"
+          <div
+            className="animate-fade-in-scale delay-500 glass-card mb-10 border-yellow-500/20 bg-gradient-to-r from-yellow-500/5 to-transparent p-6 rounded-2xl max-w-md mx-auto shadow-sm relative overflow-hidden"
           >
             <div className="absolute top-[-20%] right-[-20%] w-24 h-24 bg-yellow-500/10 rounded-full blur-2xl" />
             <div className="flex items-center justify-center gap-4">
@@ -131,13 +113,11 @@ export default function Home() {
                 <p className="text-sm text-gray-400">Guess your Digital Health Score correctly to claim.</p>
               </div>
             </div>
-          </motion.div>
+          </div>
 
           {/* CTA Button */}
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
+          <div
+            className="animate-fade-in-up delay-600"
           >
             <Link
               href="/challenge"
@@ -148,7 +128,7 @@ export default function Home() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" />
               </svg>
             </Link>
-          </motion.div>
+          </div>
         </div>
       </section>
 
