@@ -217,7 +217,7 @@ export async function handleProcessAudit(payload: { lead_id: string }) {
         overall_score: actualScore,
         audit_data: report.auditData,
       }])
-      .then(res => res.error),
+      .then((res: any) => res.error),
 
     // Update lead state
     supabaseAdmin
@@ -227,7 +227,7 @@ export async function handleProcessAudit(payload: { lead_id: string }) {
         won_prize: isWinner,
       })
       .eq('id', leadId)
-      .then(res => res.error),
+      .then((res: any) => res.error),
 
     // Create prize claim
     supabaseAdmin
@@ -240,7 +240,7 @@ export async function handleProcessAudit(payload: { lead_id: string }) {
         status: isWinner ? 'pending' : 'rejected',
         ip_address: lead.ip_address || null,
       }])
-      .then(res => res.error)
+      .then((res: any) => res.error)
       .catch(() => null),
   ])
 
