@@ -2,58 +2,46 @@ import { createClient } from '@supabase/supabase-js'
 
 let supabaseInstance: any = null
 let supabaseAdminInstance: any = null
-let initialized = false
 
 function initializeClients() {
-  if (initialized) return
-
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-  initialized = true
-
   if (!supabaseUrl || !supabaseKey) {
+    console.warn('Supabase environment variables not configured')
     return
   }
 
-  supabaseInstance = createClient(supabaseUrl, supabaseKey)
-  supabaseAdminInstance = createClient(supabaseUrl, supabaseServiceKey || supabaseKey)
-}
-
-export function getSupabaseAdmin() {
-  if (!supabaseAdminInstance) {
-    initializeClients()
+  if (!supabaseInstance) {
+    supabaseInstance = createClient(supabaseUrl, supabaseKey)
   }
   if (!supabaseAdminInstance) {
-    throw new Error('Supabase not initialized. Ensure environment variables are set.')
+    supabaseAdminInstance = createClient(supabaseUrl, supabaseServiceKey || supabaseKey)
   }
-  return supabaseAdminInstance
 }
 
-export function getSupabase() {
-  if (!supabaseInstance) {
-    initializeClients()
-  }
-  if (!supabaseInstance) {
-    throw new Error('Supabase not initialized. Ensure environment variables are set.')
-  }
-  return supabaseInstance
-}
+// Initialize at import time
+initializeClients()
 
-// Export lazy getter proxy objects for backward compatibility
+// Direct exports that lazy-initialize if needed
 export const supabase = new Proxy({} as any, {
   get(_target, prop) {
-    return getSupabase()[prop as string]
+    if (!supabaseInstance) initializeClients()
+    if (!supabaseInstance) throw new Error('Supabase not initialized')
+    const client = supabaseInstance as any
+    const value = client[prop as string]
+    return typeof value === 'function' ? value.bind(client) : value
   }
 })
 
 export const supabaseAdmin = new Proxy({} as any, {
   get(_target, prop) {
-    return getSupabaseAdmin()[prop as string]
+    if (!supabaseAdminInstance) initializeClients()
+    if (!supabaseAdminInstance) throw new Error('Supabase not initialized')
+    const client = supabaseAdminInstance as any
+    const value = client[prop as string]
+    return typeof value === 'function' ? value.bind(client) : value
   }
 })
-
-// Try to initialize at import time, but don't fail
-initializeClients()
 
