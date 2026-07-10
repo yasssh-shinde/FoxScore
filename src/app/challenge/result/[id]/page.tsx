@@ -1,9 +1,8 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { supabase } from '@/lib/supabase'
 import { Lead, AuditResult } from '@/types'
 
 export default function ResultPage() {
@@ -14,59 +13,98 @@ export default function ResultPage() {
   const [lead, setLead] = useState<Lead | null>(null)
   const [audit, setAudit] = useState<AuditResult | null>(null)
   const [loading, setLoading] = useState(true)
-  const [showScore, setShowScore] = useState(false)
+  const [auditFinished, setAuditFinished] = useState(false)
   const [animatedScore, setAnimatedScore] = useState(0)
-  const [step, setStep] = useState(0)
+  const [progressPercent, setProgressPercent] = useState(0)
+  const [statusMessage, setStatusMessage] = useState('Connecting to website...')
 
   useEffect(() => {
-    const fetchData = async () => {
+    let pollInterval: NodeJS.Timeout
+    let progressInterval: NodeJS.Timeout
+
+    // Simulate progress bar increments while waiting
+    progressInterval = setInterval(() => {
+      setProgressPercent((prev) => {
+        if (prev < 30) {
+          setStatusMessage('Initiating crawler connection...')
+          return prev + 5
+        }
+        if (prev < 60) {
+          setStatusMessage('Parsing HTML structure & tags...')
+          return prev + 3
+        }
+        if (prev < 90) {
+          setStatusMessage('Analyzing SEO & accessibility guidelines...')
+          return prev + 1
+        }
+        return prev
+      })
+    }, 400)
+
+    const checkAuditStatus = async () => {
       try {
-        const { data: leadData } = await supabase
-          .from('leads')
-          .select('*')
-          .eq('id', leadId)
-          .single()
+        const res = await fetch(`/api/leads/${leadId}/status`)
+        if (!res.ok) throw new Error('Status check failed')
+        const data = await res.json()
 
-        const { data: auditData } = await supabase
-          .from('audit_results')
-          .select('*')
-          .eq('lead_id', leadId)
-          .single()
-
-        setLead(leadData)
-        setAudit(auditData)
-        setLoading(false)
-        setShowScore(true)
+        if (data.finished) {
+          clearInterval(pollInterval)
+          clearInterval(progressInterval)
+          setProgressPercent(100)
+          setStatusMessage('Audit completed successfully!')
+          setLead(data.lead)
+          setAudit(data.audit)
+          setAuditFinished(true)
+          setLoading(false)
+        }
       } catch (error) {
-        console.error('Error fetching data:', error)
-        setLoading(false)
+        console.error('Error checking audit status:', error)
       }
     }
 
-    fetchData()
+    // Initial check
+    checkAuditStatus()
+
+    // Poll status every 2 seconds
+    pollInterval = setInterval(checkAuditStatus, 2000)
+
+    return () => {
+      clearInterval(pollInterval)
+      clearInterval(progressInterval)
+    }
   }, [leadId])
 
-  // Client-side SEO analyzer engine running 60+ checks on the stored raw HTML to get exact report score out of 10
-  const reportOverallScore = useMemo(() => {
-    // Get actual score directly from database (stored out of 100) and scale to 10
-    return audit?.overall_score ? Math.round(Number(audit.overall_score) / 10) : 0
-  }, [audit])
-
+  // Animate Overall Score
   useEffect(() => {
-    if (showScore && reportOverallScore > 0 && animatedScore < reportOverallScore) {
-      const timer = setTimeout(() => {
-        setAnimatedScore(prev => Math.min(prev + 1, reportOverallScore))
-      }, 80)
-      return () => clearTimeout(timer)
+    if (auditFinished && audit?.overall_score) {
+      const targetScore = Math.round(Number(audit.overall_score))
+      if (animatedScore < targetScore) {
+        const timer = setTimeout(() => {
+          setAnimatedScore(prev => Math.min(prev + 1, targetScore))
+        }, 20)
+        return () => clearTimeout(timer)
+      }
     }
-  }, [showScore, animatedScore, reportOverallScore])
+  }, [auditFinished, animatedScore, audit?.overall_score])
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin-slow w-12 h-12 border-4 border-white/20 border-t-[#FF6B35] rounded-full mb-4"></div>
-          <p className="text-gray-400">Analyzing your digital presence...</p>
+      <div className="min-h-screen flex items-center justify-center bg-[#0B0F19] text-white">
+        <div className="text-center max-w-md w-full px-6">
+          <div className="inline-block animate-spin w-12 h-12 border-4 border-white/10 border-t-[#FF6B35] rounded-full mb-6"></div>
+          <h2 className="text-xl font-bold mb-2">Analyzing your digital presence...</h2>
+          <p className="text-gray-400 text-sm mb-6">{statusMessage}</p>
+          
+          {/* Progress Bar */}
+          <div className="w-full bg-white/5 rounded-full h-2 mb-4 overflow-hidden border border-white/5">
+            <motion.div 
+              className="bg-gradient-to-r from-[#FF6B35] to-[#FF8C42] h-full"
+              initial={{ width: '0%' }}
+              animate={{ width: `${progressPercent}%` }}
+              transition={{ duration: 0.3 }}
+            />
+          </div>
+          <span className="text-xs text-gray-500 font-semibold uppercase tracking-wider">{progressPercent}% Completed</span>
         </div>
       </div>
     )
@@ -74,12 +112,12 @@ export default function ResultPage() {
 
   if (!lead || !audit) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-[#0B0F19] text-white">
         <div className="text-center">
-          <p className="text-red-400 mb-4">Failed to load results</p>
+          <p className="text-red-400 mb-4 font-semibold">Failed to load audit results</p>
           <button
             onClick={() => router.push('/')}
-            className="gradient-btn px-6 py-2 rounded-lg"
+            className="gradient-btn px-6 py-2 rounded-lg font-bold"
           >
             Go Home
           </button>
@@ -88,42 +126,11 @@ export default function ResultPage() {
     )
   }
 
-  const won = lead.guessed_score === reportOverallScore
-  const scoreDifference = Math.abs(reportOverallScore - lead.guessed_score)
+  const scoreDiff = Math.abs(lead.guessed_score - audit.overall_score)
+  const won = scoreDiff <= 2
 
-  // Ensure exactly 4 items for UI display consistency
-  const displayImprovements = [...(audit.audit_data.improvements || [])]
-  const defaultImprovements = [
-    '❌ Schema Markup: Missing structured data markup',
-    '❌ AI Readiness: Missing question-format headings',
-    '❌ Accessibility: Some elements lack accessible labels',
-    '❌ Social Tags: Open Graph metadata incomplete'
-  ]
-  let impIdx = 0
-  while (displayImprovements.length < 4 && impIdx < defaultImprovements.length) {
-    if (!displayImprovements.includes(defaultImprovements[impIdx])) {
-      displayImprovements.push(defaultImprovements[impIdx])
-    }
-    impIdx++
-  }
-
-  const displayStrengths = [...(audit.audit_data.strengths || [])]
-  const defaultStrengths = [
-    '✅ Basic layout structures configured',
-    '✅ Page assets crawlable',
-    '✅ Main semantic elements present',
-    '✅ Basic web presence established'
-  ]
-  let strIdx = 0
-  while (displayStrengths.length < 4 && strIdx < defaultStrengths.length) {
-    if (!displayStrengths.includes(defaultStrengths[strIdx])) {
-      displayStrengths.push(defaultStrengths[strIdx])
-    }
-    strIdx++
-  }
-
-  const finalImprovements = displayImprovements.slice(0, 4)
-  const finalStrengths = displayStrengths.slice(0, 4)
+  const finalImprovements = audit.audit_data?.improvements?.slice(0, 4) || []
+  const finalStrengths = audit.audit_data?.strengths?.slice(0, 4) || []
 
   return (
     <main className="min-h-screen py-12 md:py-20 px-4 md:px-6 bg-[#0B0F19] text-white relative overflow-hidden">
@@ -158,7 +165,6 @@ export default function ResultPage() {
           className="text-center mb-12"
         >
           <div className="relative w-52 h-52 mx-auto mb-8 filter drop-shadow-[0_0_20px_rgba(255,107,53,0.15)]">
-            {/* Outer Circle */}
             <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 100 100">
               <circle
                 cx="50"
@@ -177,7 +183,7 @@ export default function ResultPage() {
                 strokeWidth="5"
                 strokeDasharray="276.46"
                 initial={{ strokeDashoffset: 276.46 }}
-                animate={{ strokeDashoffset: 276.46 - (animatedScore / 10) * 276.46 }}
+                animate={{ strokeDashoffset: 276.46 - (animatedScore / 100) * 276.46 }}
                 transition={{ duration: 2, ease: 'easeInOut' }}
                 strokeLinecap="round"
               />
@@ -197,11 +203,11 @@ export default function ResultPage() {
                 transition={{ delay: 0.8 }}
                 className="text-center"
               >
-                <div className="text-6xl font-extrabold bg-gradient-to-r from-[#FF6B35] to-[#FF8C42] bg-clip-text text-transparent tracking-tight">
+                <div className="text-6xl font-black bg-gradient-to-r from-[#FF6B35] to-[#FF8C42] bg-clip-text text-transparent tracking-tight">
                   {animatedScore}
                 </div>
                 <div className="text-gray-400 text-xs font-semibold tracking-wider uppercase mt-1">Overall Score</div>
-                <div className="text-gray-500 text-xs mt-0.5">out of 10</div>
+                <div className="text-gray-500 text-xs mt-0.5">out of 100</div>
               </motion.div>
             </div>
           </div>
@@ -218,10 +224,11 @@ export default function ResultPage() {
                 <div className="absolute top-0 right-0 w-24 h-24 bg-yellow-500/10 rounded-full blur-2xl"></div>
                 <div className="text-4xl mb-3">🎉</div>
                 <h2 className="text-2xl md:text-3xl font-extrabold text-yellow-400 mb-2">
-                  Perfect Match!
+                  Perfect Match! (Within ±2 Tolerance)
                 </h2>
                 <p className="text-base text-gray-300">
-                  Your guess was spot on. You won ₹1,000 cash! 🏆 Our team will contact you shortly to process your reward.
+                  Your guess was within ±2 points of your actual score. You qualify to win ₹1,000 cash! 🏆 
+                  <span className="block mt-2 font-semibold text-yellow-500/90 text-sm">Reward Status: Pending Admin Verification</span>
                 </p>
               </div>
             ) : (
@@ -233,11 +240,11 @@ export default function ResultPage() {
                   </div>
                   <div className="text-center py-2 px-3 bg-white/5 rounded-xl border border-white/5">
                     <p className="text-xs text-gray-400 uppercase tracking-wider">Actual Score</p>
-                    <p className="text-xl font-bold text-[#FF8C42] mt-1">{reportOverallScore}</p>
+                    <p className="text-xl font-bold text-[#FF8C42] mt-1">{audit.overall_score}</p>
                   </div>
                 </div>
                 <p className="text-sm text-gray-400">
-                  {scoreDifference <= 2 
+                  {scoreDiff <= 10 
                     ? "So close! You were just a few points away. Keep optimizing! ⚡" 
                     : "No matches this time! Check your detailed report below to see how you can improve. 💪"}
                 </p>
@@ -257,9 +264,8 @@ export default function ResultPage() {
           {[
             {
               label: 'Website Speed',
-              score: Math.round(Number(audit.website_score) / 10),
+              score: Math.round(Number(audit.website_score)),
               color: 'from-blue-500/20 to-blue-600/5 border-blue-500/20',
-              badgeColor: 'bg-blue-500/20 text-blue-300',
               icon: (
                 <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -268,9 +274,8 @@ export default function ResultPage() {
             },
             {
               label: 'On-Page SEO',
-              score: Math.round(Number(audit.seo_score) / 10),
+              score: Math.round(Number(audit.seo_score)),
               color: 'from-purple-500/20 to-purple-600/5 border-purple-500/20',
-              badgeColor: 'bg-purple-500/20 text-purple-300',
               icon: (
                 <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -279,9 +284,8 @@ export default function ResultPage() {
             },
             {
               label: 'Google Presence',
-              score: Math.round(Number(audit.google_score) / 10),
+              score: Math.round(Number(audit.google_score)),
               color: 'from-red-500/20 to-red-600/5 border-red-500/20',
-              badgeColor: 'bg-red-500/20 text-red-300',
               icon: (
                 <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -289,10 +293,9 @@ export default function ResultPage() {
               )
             },
             {
-              label: 'Social Authority',
-              score: Math.round(Number(audit.social_score) / 10),
+              label: 'Social & Security',
+              score: Math.round(Number(audit.social_score)),
               color: 'from-green-500/20 to-green-600/5 border-green-500/20',
-              badgeColor: 'bg-green-500/20 text-green-300',
               icon: (
                 <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 10.742l-2.084 1.157M8.684 12.738l2.085-1.157m1.117-2.924A2.5 2.5 0 1111 8a2.5 2.5 0 01-1.117-1.157zm0 9.848a2.5 2.5 0 111.117-4.829 2.5 2.5 0 01-1.117 4.829z" />
@@ -309,7 +312,7 @@ export default function ResultPage() {
             >
               <div className="p-3 bg-white/5 rounded-xl mb-3">{item.icon}</div>
               <div>
-                <span className="text-3xl font-extrabold text-white block tracking-tight mb-1">{item.score}/10</span>
+                <span className="text-3xl font-extrabold text-white block tracking-tight mb-1">{item.score}/100</span>
                 <span className="text-xs font-medium text-gray-400">{item.label}</span>
               </div>
             </motion.div>
@@ -335,9 +338,8 @@ export default function ResultPage() {
               <h3 className="text-lg font-bold text-red-400">Areas to Improve</h3>
             </div>
             <ul className="space-y-3.5">
-              {finalImprovements.map((item, i) => {
-                // Remove emoji symbol prefix if present to match SVG layout
-                const cleanedText = item.replace(/^[❌✅]\s*/, '')
+              {finalImprovements.length > 0 ? finalImprovements.map((item, i) => {
+                const cleanedText = item.replace(/^[❌⚠️]\s*/, '')
                 return (
                   <li key={i} className="text-sm text-gray-300 flex items-start gap-2.5">
                     <svg className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -346,7 +348,9 @@ export default function ResultPage() {
                     <span>{cleanedText}</span>
                   </li>
                 )
-              })}
+              }) : (
+                <li className="text-sm text-gray-400 italic">No critical improvements needed! Keep up the good work.</li>
+              )}
             </ul>
           </motion.div>
 
@@ -366,8 +370,8 @@ export default function ResultPage() {
               <h3 className="text-lg font-bold text-green-400">Your Strengths</h3>
             </div>
             <ul className="space-y-3.5">
-              {finalStrengths.map((item, i) => {
-                const cleanedText = item.replace(/^[❌✅]\s*/, '')
+              {finalStrengths.length > 0 ? finalStrengths.map((item, i) => {
+                const cleanedText = item.replace(/^[✅✨]\s*/, '')
                 return (
                   <li key={i} className="text-sm text-gray-300 flex items-start gap-2.5">
                     <svg className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -376,7 +380,9 @@ export default function ResultPage() {
                     <span>{cleanedText}</span>
                   </li>
                 )
-              })}
+              }) : (
+                <li className="text-sm text-gray-400 italic">Evaluating page structure strengths...</li>
+              )}
             </ul>
           </motion.div>
         </div>

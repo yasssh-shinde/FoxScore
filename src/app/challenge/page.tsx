@@ -1,81 +1,32 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { RegistrationFormData, TeamMember } from '@/types'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { leadFormSchema, LeadFormData } from '@/lib/validators/formSchema'
 
 export default function Challenge() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
-  const [guessValue, setGuessValue] = useState(5)
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
-  const [selectedTeamMember, setSelectedTeamMember] = useState('')
-  const [selectedTeamMemberName, setSelectedTeamMemberName] = useState('')
-  const [loadingTeam, setLoadingTeam] = useState(true)
-  const [dropdownOpen, setDropdownOpen] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
+  const [guessValue, setGuessValue] = useState(70)
 
-  useEffect(() => {
-    const fallbackMembers: TeamMember[] = [
-      { id: 'yash-1', name: 'Yash', email: 'yash@seofox.io', role: 'admin', status: 'active', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-      { id: 'dnya-1', name: 'Dnya', email: 'dnya@seofox.io', role: 'manager', status: 'active', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-      { id: 'achyut-1', name: 'Achyut', email: 'achyut@seofox.io', role: 'manager', status: 'active', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-      { id: 'vaibhav-1', name: 'Vaibhav', email: 'vaibhav@seofox.io', role: 'manager', status: 'active', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-      { id: 'gargi-1', name: 'Gargi', email: 'gargi@seofox.io', role: 'manager', status: 'active', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-    ]
-
-    const fetchTeamMembers = async () => {
-      try {
-        const res = await fetch('/api/team-members')
-        if (!res.ok) throw new Error('Failed to fetch team members')
-        const data = await res.json()
-
-        // Ensure data is an array
-        if (Array.isArray(data) && data.length > 0) {
-          setTeamMembers(data)
-          setSelectedTeamMember(data[0].id)
-          setSelectedTeamMemberName(data[0].name)
-        } else {
-          setTeamMembers(fallbackMembers)
-          setSelectedTeamMember(fallbackMembers[0].id)
-          setSelectedTeamMemberName(fallbackMembers[0].name)
-          console.log('Using fallback team members. Run migrations to add to database.')
-        }
-      } catch (error) {
-        console.error('Failed to fetch team members:', error)
-        setTeamMembers(fallbackMembers)
-        setSelectedTeamMember(fallbackMembers[0].id)
-        setSelectedTeamMemberName(fallbackMembers[0].name)
-      } finally {
-        setLoadingTeam(false)
-      }
-    }
-
-    fetchTeamMembers()
-  }, [])
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setDropdownOpen(false)
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  const { register, handleSubmit, formState: { errors }, watch } = useForm<RegistrationFormData>({
+  const { register, handleSubmit, formState: { errors } } = useForm<LeadFormData>({
+    resolver: zodResolver(leadFormSchema),
+    mode: 'onBlur',
+    reValidateMode: 'onChange',
     defaultValues: {
-      guessed_score: 5,
+      guessed_score: 70,
       terms_accepted: false,
+      google_business_url: '',
+      instagram_url: '',
+      facebook_url: '',
+      linkedin_url: '',
     }
   })
 
-  const onSubmit = async (data: RegistrationFormData) => {
+  const onSubmit = async (data: LeadFormData) => {
     setIsLoading(true)
     try {
       let websiteUrl = data.website_url.trim()
@@ -90,33 +41,18 @@ export default function Challenge() {
           ...data,
           website_url: websiteUrl,
           guessed_score: guessValue,
-          checked_by: selectedTeamMember,
         }),
       })
 
-      if (!response.ok) throw new Error('Failed to submit')
-
-      const { lead_id } = await response.json()
-
-      // Auto-assign to selected team member
-      if (selectedTeamMember) {
-        try {
-          await fetch('/api/lead-assignments', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              lead_id: lead_id,
-              assigned_to: selectedTeamMember,
-            }),
-          })
-        } catch (err) {
-          console.error('Failed to assign lead:', err)
-        }
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => null)
+        throw new Error(errJson?.error || 'Failed to submit lead data')
       }
 
+      const { lead_id } = await response.json()
       router.push(`/challenge/result/${lead_id}`)
-    } catch (error) {
-      alert('Error submitting form. Please try again.')
+    } catch (error: any) {
+      alert(error.message || 'Error submitting challenge form. Please try again.')
     } finally {
       setIsLoading(false)
     }
@@ -157,221 +93,230 @@ export default function Challenge() {
           </h1>
           <p className="text-gray-400 text-sm md:text-base mb-8">Fill in your details and guess your Digital Health Score</p>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
             {/* Name & Company */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">Full Name *</label>
+                <label htmlFor="full_name" className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">Full Name *</label>
                 <input
-                  {...register('full_name', { required: 'Name is required' })}
+                  id="full_name"
+                  {...register('full_name')}
                   type="text"
-                  className="w-full bg-white/[0.03] border border-white/10 hover:border-white/20 focus:border-[#FF6B35] focus:ring-1 focus:ring-[#FF6B35]/20 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none transition-all duration-200 text-sm"
-                  placeholder="Your name"
+                  aria-required="true"
+                  aria-invalid={errors.full_name ? "true" : "false"}
+                  aria-describedby={errors.full_name ? "full_name-error" : undefined}
+                  className={`w-full bg-white/[0.03] border rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none transition-all duration-200 text-sm ${
+                    errors.full_name ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500/25' : 'border-white/10 hover:border-white/20 focus:border-[#FF6B35] focus:ring-1 focus:ring-[#FF6B35]/20'
+                  }`}
+                  placeholder="Your full name"
                 />
-                {errors.full_name && <p className="text-red-400 text-xs mt-1">{errors.full_name.message}</p>}
+                {errors.full_name && (
+                  <p id="full_name-error" role="alert" className="text-red-400 text-xs mt-1.5 flex items-center gap-1">
+                    <span>⚠️</span> {errors.full_name.message}
+                  </p>
+                )}
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">Company *</label>
+                <label htmlFor="company_name" className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">Company *</label>
                 <input
-                  {...register('company_name', { required: 'Company is required' })}
+                  id="company_name"
+                  {...register('company_name')}
                   type="text"
-                  className="w-full bg-white/[0.03] border border-white/10 hover:border-white/20 focus:border-[#FF6B35] focus:ring-1 focus:ring-[#FF6B35]/20 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none transition-all duration-200 text-sm"
-                  placeholder="Your company"
+                  aria-required="true"
+                  aria-invalid={errors.company_name ? "true" : "false"}
+                  aria-describedby={errors.company_name ? "company_name-error" : undefined}
+                  className={`w-full bg-white/[0.03] border rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none transition-all duration-200 text-sm ${
+                    errors.company_name ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500/25' : 'border-white/10 hover:border-white/20 focus:border-[#FF6B35] focus:ring-1 focus:ring-[#FF6B35]/20'
+                  }`}
+                  placeholder="Your company name"
                 />
-                {errors.company_name && <p className="text-red-400 text-xs mt-1">{errors.company_name.message}</p>}
+                {errors.company_name && (
+                  <p id="company_name-error" role="alert" className="text-red-400 text-xs mt-1.5 flex items-center gap-1">
+                    <span>⚠️</span> {errors.company_name.message}
+                  </p>
+                )}
               </div>
-            </div>
-
-            {/* Team Member Selection - Custom Dropdown */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">👤 Who will check your score? *</label>
-              {loadingTeam ? (
-                <div className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-2.5 text-gray-500">Loading team members...</div>
-              ) : !Array.isArray(teamMembers) || teamMembers.length === 0 ? (
-                <div className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-2.5 text-gray-500">No team members available</div>
-              ) : (
-                <div ref={dropdownRef} className="relative">
-                  {/* Dropdown Button */}
-                  <button
-                    type="button"
-                    onClick={() => setDropdownOpen(!dropdownOpen)}
-                    className="w-full bg-white/[0.03] border border-white/10 hover:border-white/20 focus:border-[#FF6B35] focus:ring-1 focus:ring-[#FF6B35]/20 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none transition-all duration-200 text-sm flex items-center justify-between"
-                  >
-                    <span>{selectedTeamMemberName || 'Select a team member...'}</span>
-                    <svg className={`w-4 h-4 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                    </svg>
-                  </button>
-
-                  {/* Dropdown Menu */}
-                  {dropdownOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="absolute z-50 w-full mt-2 bg-slate-800 border border-white/10 rounded-xl shadow-xl overflow-hidden"
-                    >
-                      {Array.isArray(teamMembers) && teamMembers.map((member) => {
-                        const getColor = (name: string) => {
-                          const colors: any = {
-                            'Yash': '#FF6B35',
-                            'Dnya': '#4F46E5',
-                            'Achyut': '#10B981',
-                            'Vaibhav': '#F59E0B',
-                            'Gargi': '#EC4899',
-                          }
-                          return colors[name] || '#6B7280'
-                        }
-
-                        const isSelected = selectedTeamMember === member.id
-                        const color = getColor(member.name)
-
-                        return (
-                          <button
-                            key={member.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedTeamMember(member.id)
-                              setSelectedTeamMemberName(member.name)
-                              setDropdownOpen(false)
-                            }}
-                            className={`w-full px-4 py-3 flex items-center gap-3 transition-colors ${
-                              isSelected
-                                ? 'bg-white/10 border-l-4'
-                                : 'hover:bg-white/5'
-                            }`}
-                            style={isSelected ? { borderLeftColor: color } : {}}
-                          >
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
-                            <div className="flex-1 text-left">
-                              <span className="font-semibold">{member.name}</span>
-                              <span className="text-xs text-gray-400 ml-2">({member.role})</span>
-                            </div>
-                            {isSelected && (
-                              <svg className="w-4 h-4 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                            )}
-                          </button>
-                        )
-                      })}
-                    </motion.div>
-                  )}
-                </div>
-              )}
             </div>
 
             {/* Contact */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">Mobile *</label>
+                <label htmlFor="mobile_number" className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">Mobile Number *</label>
                 <input
-                  {...register('mobile_number', { required: 'Mobile is required' })}
+                  id="mobile_number"
+                  {...register('mobile_number')}
                   type="tel"
-                  className="w-full bg-white/[0.03] border border-white/10 hover:border-white/20 focus:border-[#FF6B35] focus:ring-1 focus:ring-[#FF6B35]/20 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none transition-all duration-200 text-sm"
-                  placeholder="10-digit number"
+                  aria-required="true"
+                  aria-invalid={errors.mobile_number ? "true" : "false"}
+                  aria-describedby={errors.mobile_number ? "mobile_number-error" : undefined}
+                  className={`w-full bg-white/[0.03] border rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none transition-all duration-200 text-sm ${
+                    errors.mobile_number ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500/25' : 'border-white/10 hover:border-white/20 focus:border-[#FF6B35] focus:ring-1 focus:ring-[#FF6B35]/20'
+                  }`}
+                  placeholder="+91 98765 43210"
                 />
-                {errors.mobile_number && <p className="text-red-400 text-xs mt-1">{errors.mobile_number.message}</p>}
+                {errors.mobile_number && (
+                  <p id="mobile_number-error" role="alert" className="text-red-400 text-xs mt-1.5 flex items-center gap-1">
+                    <span>⚠️</span> {errors.mobile_number.message}
+                  </p>
+                )}
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">Email *</label>
+                <label htmlFor="email" className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">Corporate Email *</label>
                 <input
-                  {...register('email', {
-                    required: 'Email is required',
-                    pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Invalid email' }
-                  })}
+                  id="email"
+                  {...register('email')}
                   type="email"
-                  className="w-full bg-white/[0.03] border border-white/10 hover:border-white/20 focus:border-[#FF6B35] focus:ring-1 focus:ring-[#FF6B35]/20 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none transition-all duration-200 text-sm"
+                  aria-required="true"
+                  aria-invalid={errors.email ? "true" : "false"}
+                  aria-describedby={errors.email ? "email-error" : undefined}
+                  className={`w-full bg-white/[0.03] border rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none transition-all duration-200 text-sm ${
+                    errors.email ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500/25' : 'border-white/10 hover:border-white/20 focus:border-[#FF6B35] focus:ring-1 focus:ring-[#FF6B35]/20'
+                  }`}
                   placeholder="you@company.com"
                 />
-                {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email.message}</p>}
+                {errors.email && (
+                  <p id="email-error" role="alert" className="text-red-400 text-xs mt-1.5 flex items-center gap-1">
+                    <span>⚠️</span> {errors.email.message}
+                  </p>
+                )}
               </div>
             </div>
 
             {/* Website & Google Business */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">Website URL *</label>
+                <label htmlFor="website_url" className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">Website URL *</label>
                 <input
-                  {...register('website_url', { required: 'Website URL is required' })}
+                  id="website_url"
+                  {...register('website_url')}
                   type="text"
-                  className="w-full bg-white/[0.03] border border-white/10 hover:border-white/20 focus:border-[#FF6B35] focus:ring-1 focus:ring-[#FF6B35]/20 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none transition-all duration-200 text-sm"
-                  placeholder="example.com"
+                  aria-required="true"
+                  aria-invalid={errors.website_url ? "true" : "false"}
+                  aria-describedby={errors.website_url ? "website_url-error" : undefined}
+                  className={`w-full bg-white/[0.03] border rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none transition-all duration-200 text-sm ${
+                    errors.website_url ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500/25' : 'border-white/10 hover:border-white/20 focus:border-[#FF6B35] focus:ring-1 focus:ring-[#FF6B35]/20'
+                  }`}
+                  placeholder="company.com"
                 />
-                {errors.website_url && <p className="text-red-400 text-xs mt-1">{errors.website_url.message}</p>}
+                {errors.website_url && (
+                  <p id="website_url-error" role="alert" className="text-red-400 text-xs mt-1.5 flex items-center gap-1">
+                    <span>⚠️</span> {errors.website_url.message}
+                  </p>
+                )}
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">Google Business (Optional)</label>
+                <label htmlFor="google_business_url" className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">Google Business URL (Optional)</label>
                 <input
+                  id="google_business_url"
                   {...register('google_business_url')}
                   type="url"
-                  className="w-full bg-white/[0.03] border border-white/10 hover:border-white/20 focus:border-[#FF6B35] focus:ring-1 focus:ring-[#FF6B35]/20 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none transition-all duration-200 text-sm"
-                  placeholder="Google Business URL"
+                  aria-invalid={errors.google_business_url ? "true" : "false"}
+                  aria-describedby={errors.google_business_url ? "google_business_url-error" : undefined}
+                  className={`w-full bg-white/[0.03] border rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none transition-all duration-200 text-sm ${
+                    errors.google_business_url ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500/25' : 'border-white/10 hover:border-white/20 focus:border-[#FF6B35] focus:ring-1 focus:ring-[#FF6B35]/20'
+                  }`}
+                  placeholder="https://g.page/r/company"
                 />
+                {errors.google_business_url && (
+                  <p id="google_business_url-error" role="alert" className="text-red-400 text-xs mt-1.5 flex items-center gap-1">
+                    <span>⚠️</span> {errors.google_business_url.message}
+                  </p>
+                )}
               </div>
             </div>
 
             {/* Social Media */}
             <div>
-              <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-3">Social Media (Optional)</label>
+              <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-3">Social Media URLs (Optional)</label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <input
-                  {...register('instagram_url')}
-                  type="url"
-                  placeholder="Instagram"
-                  className="w-full bg-white/[0.03] border border-white/10 hover:border-white/20 focus:border-[#FF6B35] focus:ring-1 focus:ring-[#FF6B35]/20 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none transition-all duration-200 text-sm"
-                />
-                <input
-                  {...register('facebook_url')}
-                  type="url"
-                  placeholder="Facebook"
-                  className="w-full bg-white/[0.03] border border-white/10 hover:border-white/20 focus:border-[#FF6B35] focus:ring-1 focus:ring-[#FF6B35]/20 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none transition-all duration-200 text-sm"
-                />
-                <input
-                  {...register('linkedin_url')}
-                  type="url"
-                  placeholder="LinkedIn"
-                  className="w-full bg-white/[0.03] border border-white/10 hover:border-white/20 focus:border-[#FF6B35] focus:ring-1 focus:ring-[#FF6B35]/20 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none transition-all duration-200 text-sm"
-                />
+                <div>
+                  <input
+                    aria-label="Instagram Profile Link"
+                    {...register('instagram_url')}
+                    type="url"
+                    placeholder="Instagram URL"
+                    aria-invalid={errors.instagram_url ? "true" : "false"}
+                    className={`w-full bg-white/[0.03] border rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none transition-all duration-200 text-sm ${
+                      errors.instagram_url ? 'border-red-500' : 'border-white/10 hover:border-white/20 focus:border-[#FF6B35]'
+                    }`}
+                  />
+                  {errors.instagram_url && <span className="text-red-400 text-[10px] mt-1 block">⚠️ Invalid URL</span>}
+                </div>
+                
+                <div>
+                  <input
+                    aria-label="Facebook Page Link"
+                    {...register('facebook_url')}
+                    type="url"
+                    placeholder="Facebook URL"
+                    aria-invalid={errors.facebook_url ? "true" : "false"}
+                    className={`w-full bg-white/[0.03] border rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none transition-all duration-200 text-sm ${
+                      errors.facebook_url ? 'border-red-500' : 'border-white/10 hover:border-white/20 focus:border-[#FF6B35]'
+                    }`}
+                  />
+                  {errors.facebook_url && <span className="text-red-400 text-[10px] mt-1 block">⚠️ Invalid URL</span>}
+                </div>
+
+                <div>
+                  <input
+                    aria-label="LinkedIn Profile Link"
+                    {...register('linkedin_url')}
+                    type="url"
+                    placeholder="LinkedIn URL"
+                    aria-invalid={errors.linkedin_url ? "true" : "false"}
+                    className={`w-full bg-white/[0.03] border rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none transition-all duration-200 text-sm ${
+                      errors.linkedin_url ? 'border-red-500' : 'border-white/10 hover:border-white/20 focus:border-[#FF6B35]'
+                    }`}
+                  />
+                  {errors.linkedin_url && <span className="text-red-400 text-[10px] mt-1 block">⚠️ Invalid URL</span>}
+                </div>
               </div>
             </div>
 
-            {/* Score Guess */}
+            {/* Score Guess (0-100) */}
             <div>
-              <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-3">
-                Guess Your Digital Health Score: <span className="text-[#FF6B35] text-base font-extrabold">{guessValue}/10</span>
+              <label htmlFor="guessed_score" className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-3">
+                Guess Your Digital Health Score: <span className="text-[#FF6B35] text-base font-extrabold">{guessValue}/100</span>
               </label>
               <input
+                id="guessed_score"
                 type="range"
                 min="0"
-                max="10"
+                max="100"
                 value={guessValue}
                 onChange={(e) => setGuessValue(parseInt(e.target.value))}
                 className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-[#FF6B35]"
               />
               <div className="flex justify-between text-xs text-gray-500 mt-2">
                 <span>0</span>
-                <span>5</span>
-                <span>10</span>
+                <span>50</span>
+                <span>100</span>
               </div>
             </div>
 
             {/* Terms */}
             <div className="flex items-start gap-3">
               <input
-                {...register('terms_accepted', { required: 'You must accept terms' })}
+                {...register('terms_accepted')}
                 type="checkbox"
                 id="terms"
+                aria-required="true"
+                aria-invalid={errors.terms_accepted ? "true" : "false"}
+                aria-describedby={errors.terms_accepted ? "terms-error" : undefined}
                 className="mt-1 w-4 h-4 accent-[#FF6B35] cursor-pointer"
               />
               <label htmlFor="terms" className="text-sm text-gray-400 cursor-pointer">
                 I agree to the terms and privacy policy
               </label>
             </div>
-            {errors.terms_accepted && <p className="text-red-400 text-xs">{errors.terms_accepted.message}</p>}
+            {errors.terms_accepted && (
+              <p id="terms-error" role="alert" className="text-red-400 text-xs mt-1.5 flex items-center gap-1">
+                <span>⚠️</span> {errors.terms_accepted.message}
+              </p>
+            )}
 
             {/* Submit Button */}
             <motion.button
@@ -387,10 +332,10 @@ export default function Challenge() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span>Submitting...</span>
+                  <span>Initiating Scan...</span>
                 </>
               ) : (
-                'Get My Digital Health Score'
+                'Start Free Audit Challenge'
               )}
             </motion.button>
           </form>

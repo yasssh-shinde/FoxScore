@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
-import { generateAuditData, calculateScore } from '@/services/scoreCalculator'
-import { sendWelcomeEmail } from '@/services/emailService'
-import { RegistrationFormData } from '@/types'
+import { supabaseAdmin } from '@/lib/supabase'
+import { enqueueJob, runNextJobs, handleProcessAudit } from '@/services/queue/jobQueue'
+import { after } from 'next/server'
+import { leadFormSchema } from '@/lib/validators/formSchema'
 
 export async function GET(req: NextRequest) {
   try {
@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
 
-    let query = supabase
+    let query = supabaseAdmin
       .from('leads')
       .select(
         `*,
@@ -27,17 +27,14 @@ export async function GET(req: NextRequest) {
         { count: 'exact' }
       )
 
-    // Search filter
     if (search) {
       query = query.or(
         `full_name.ilike.%${search}%,company_name.ilike.%${search}%,email.ilike.%${search}%`
       )
     }
 
-    // Sorting
     query = query.order(sortBy, { ascending: sortOrder === 'asc' })
 
-    // Pagination
     const { data, error, count } = await query.range(
       (page - 1) * limit,
       page * limit - 1
@@ -66,130 +63,141 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body: RegistrationFormData & { guessed_score: number; checked_by?: string } = await req.json()
+    const body = await req.json()
+    // 1. Zod schema validation & sanitization
+    const validationResult = leadFormSchema.safeParse(body)
+    if (!validationResult.success) {
+      const errorMessages = validationResult.error.errors.map(err => err.message).join(' ')
+      return NextResponse.json({ error: errorMessages }, { status: 400 })
+    }
 
-    // Generate reference ID
-    const referenceId = `REF-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
+    const {
+      full_name,
+      company_name,
+      mobile_number,
+      email,
+      website_url,
+      google_business_url,
+      instagram_url,
+      facebook_url,
+      linkedin_url,
+      guessed_score,
+    } = validationResult.data
 
-    // Generate audit data (real scan) and calculate score
-    console.log('🔍 Starting real website scan for:', body.website_url)
-    const auditData = await generateAuditData(body.website_url)
-    console.log('✅ Scan complete, calculating score')
-    const scoreResult = calculateScore(auditData)
+    // Sanitize website URL protocol
+    let website = website_url.trim()
+    if (!website.startsWith('http://') && !website.startsWith('https://')) {
+      website = 'https://' + website
+    }
 
-    // Check if won prize (compare guess out of 10 with actual overall score scaled to 10)
-    const won = Math.round(scoreResult.overall / 10) === body.guessed_score
+    // 2. Automated Round-Robin Lead Assignment
+    // Fetch all active team members ordered by ID / created_at
+    const { data: teamMembers, error: teamError } = await supabaseAdmin
+      .from('team_members')
+      .select('id, name')
+      .eq('status', 'active')
+      .order('created_at', { ascending: true })
 
-    // Create lead
-    const { data: lead, error: leadError } = await supabase
+    if (teamError) throw teamError
+
+    let assignedToId: string | null = null
+
+    if (teamMembers && teamMembers.length > 0) {
+      // Find the last created lead assignment
+      const { data: lastAssignment } = await supabaseAdmin
+        .from('lead_assignments')
+        .select('assigned_to')
+        .order('created_at', { ascending: false })
+        .limit(1)
+
+      const lastAssignedId = lastAssignment?.[0]?.assigned_to
+
+      if (lastAssignedId) {
+        // Find index of last assignee in active team list
+        const lastIdx = teamMembers.findIndex(m => m.id === lastAssignedId)
+        // Next assignee index
+        const nextIdx = lastIdx === -1 ? 0 : (lastIdx + 1) % teamMembers.length
+        assignedToId = teamMembers[nextIdx].id
+      } else {
+        assignedToId = teamMembers[0].id
+      }
+    }
+
+    // Generate unique reference ID
+    const referenceId = `REF-${Date.now()}-${Math.random().toString(36).substring(2, 11).toUpperCase()}`
+
+    // Get IP address and user agent
+    const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || '127.0.0.1'
+
+    // 3. Create lead in database
+    const { data: lead, error: leadError } = await supabaseAdmin
       .from('leads')
       .insert([{
         reference_id: referenceId,
-        full_name: body.full_name,
-        company_name: body.company_name,
-        mobile_number: body.mobile_number,
-        email: body.email,
-        website_url: body.website_url,
-        google_business_url: body.google_business_url || null,
-        instagram_url: body.instagram_url || null,
-        facebook_url: body.facebook_url || null,
-        linkedin_url: body.linkedin_url || null,
-        guessed_score: body.guessed_score,
-        actual_score: scoreResult.overall,
-        won_prize: won,
+        full_name,
+        company_name,
+        mobile_number,
+        email,
+        website_url: website,
+        google_business_url: google_business_url || null,
+        instagram_url: instagram_url || null,
+        facebook_url: facebook_url || null,
+        linkedin_url: linkedin_url || null,
+        guessed_score: guessed_score,
+        actual_score: null, // Computed asynchronously
+        won_prize: false,  // Evaluated during audit
         consultation_requested: false,
-        checked_by: body.checked_by || null,
+        checked_by: assignedToId,
+        ip_address: ip,
       }])
       .select()
       .single()
 
     if (leadError) throw leadError
 
-    // Create audit result
-    const { error: auditError } = await supabase
-      .from('audit_results')
-      .insert([{
-        lead_id: lead.id,
-        website_score: scoreResult.website,
-        seo_score: scoreResult.seo,
-        google_score: scoreResult.google,
-        social_score: scoreResult.social,
-        overall_score: scoreResult.overall,
-        audit_data: auditData,
-      }])
+    // 4. Create assignment record
+    if (assignedToId) {
+      await supabaseAdmin
+        .from('lead_assignments')
+        .insert([{
+          lead_id: lead.id,
+          assigned_to: assignedToId,
+          status: 'assigned',
+        }])
+    }
 
-    if (auditError) throw auditError
+    // 5. Enqueue the audit process job (Run in background)
+    const jobId = await enqueueJob('PROCESS_AUDIT', { lead_id: lead.id })
 
-    // Send welcome email (DISABLED FOR NOW - Limited free tier emails)
-    // Enable when ready to launch: set ENABLE_EMAILS=true in .env.local
-    if (process.env.ENABLE_EMAILS === 'true') {
-      console.log('\n🔵 Starting email process for:', lead.email)
-      try {
-        const emailSent = await sendWelcomeEmail(lead, {
-          ...auditData,
-          overall_score: scoreResult.overall,
-        } as any)
-        console.log('✅ Email process completed:', emailSent)
-      } catch (emailErr: any) {
-        console.error('❌ Email failed:', emailErr?.message || emailErr)
+    after(async () => {
+      if (!jobId) {
+        console.warn(`⚠️ Background queue table missing. Falling back to synchronous audit execution in background...`)
+        try {
+          await handleProcessAudit({ lead_id: lead.id })
+          console.log(`✅ Synchronous fallback audit completed in background for lead ${lead.id}`)
+        } catch (syncErr: any) {
+          console.error(`🔴 Synchronous fallback audit failed:`, syncErr.message || syncErr)
+        }
+      } else {
+        console.log(`⚡ Next.js 15 after() executing queue worker...`)
+        const count = await runNextJobs()
+        console.log(`⚡ Queue worker finished. Processed ${count} jobs.`)
       }
-    } else {
-      console.log('📧 Email disabled (ENABLE_EMAILS not set)')
-    }
+    })
 
-    // Optional: Trigger WhatsApp webhook
-    if (process.env.WHATSAPP_WEBHOOK_URL) {
-      await fetch(process.env.WHATSAPP_WEBHOOK_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: body.full_name,
-          phone: body.mobile_number,
-          company: body.company_name,
-          website: body.website_url,
-          score: scoreResult.overall,
-        }),
-      }).catch((e) => console.error('Webhook error:', e))
-    }
-
-    // Optional: Sync with Google Sheets via Webapp Webhook
-    if (process.env.GOOGLE_SHEET_WEBHOOK_URL) {
-      console.log('📊 Syncing lead to Google Sheets...')
-      await fetch(process.env.GOOGLE_SHEET_WEBHOOK_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          timestamp: new Date().toISOString(),
-          reference_id: referenceId,
-          full_name: body.full_name,
-          company_name: body.company_name,
-          email: body.email,
-          mobile_number: body.mobile_number,
-          website_url: body.website_url,
-          guessed_score: body.guessed_score,
-          actual_score: scoreResult.overall,
-          won_prize: won,
-        }),
-      }).catch((e) => console.error('Google Sheet Sync Error:', e))
-    }
-
+    // Return immediate response to the client
     return NextResponse.json({
       success: true,
       lead_id: lead.id,
       reference_id: referenceId,
-      score: scoreResult.overall,
-    })
+      job_id: jobId,
+      assigned_to: assignedToId,
+    }, { status: 201 })
+
   } catch (error: any) {
-    let errorMsg = 'Unknown error'
-    if (error?.message) errorMsg = error.message
-    if (error?.error_description) errorMsg = error.error_description
-    if (typeof error === 'string') errorMsg = error
-
-    console.error('🔴 Lead creation error:', errorMsg)
-    console.error('🔴 Full error object:', JSON.stringify(error, null, 2))
-
+    console.error('🔴 Lead registration failed:', error)
     return NextResponse.json(
-      { error: errorMsg },
+      { error: error?.message || 'Failed to submit challenge lead' },
       { status: 500 }
     )
   }
