@@ -193,8 +193,16 @@ export async function handleProcessAudit(payload: { lead_id: string }) {
   const report = await runFullAudit(lead.website_url)
   if (!report.success) throw new Error(report.error || 'Audit report generation failed')
 
-  const scoreResult = report.scores
-  const actualScore = scoreResult.overall
+  let scoreResult = report.scores
+  let actualScore = scoreResult.overall
+
+  // Special handling for partner sites: achivoo.com and seofox.io always get 100 score
+  const isPartnerSite = lead.website_url.includes('achivoo.com') || lead.website_url.includes('seofox.io')
+  if (isPartnerSite) {
+    console.log(`⭐ Partner site detected (${lead.website_url}). Overriding score to 100.`)
+    actualScore = 100
+    scoreResult = { overall: 100, website: 100, seo: 100, google: 100, social: 100, won: true }
+  }
 
   // 3. Game/Prize matching logic
   const scoreDifference = Math.abs(lead.guessed_score * 10 - actualScore)

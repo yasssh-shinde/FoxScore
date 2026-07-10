@@ -17,6 +17,7 @@ export default function ResultPage() {
   const [animatedScore, setAnimatedScore] = useState(0)
   const [progressPercent, setProgressPercent] = useState(0)
   const [statusMessage, setStatusMessage] = useState('Connecting to website...')
+  const [showFirecrackers, setShowFirecrackers] = useState(false)
 
   useEffect(() => {
     let pollInterval: NodeJS.Timeout
@@ -56,6 +57,12 @@ export default function ResultPage() {
           setAudit(data.audit)
           setAuditFinished(true)
           setLoading(false)
+
+          // Check if guess matches actual score (perfect match!)
+          const actualScoreOn10 = Math.round(Number(data.audit.overall_score) / 10)
+          if (data.lead.guessed_score === actualScoreOn10) {
+            setShowFirecrackers(true)
+          }
         } else if (data.finished && !data.audit) {
           // Audit is done but data still loading, retry in 500ms
           setTimeout(() => checkAuditStatus(), 500)
@@ -137,6 +144,38 @@ export default function ResultPage() {
 
   return (
     <main className="min-h-screen py-12 md:py-20 px-4 md:px-6 bg-[#0B0F19] text-white relative overflow-hidden">
+      {/* Firecracker celebration effect */}
+      {showFirecrackers && (
+        <>
+          <style>{`
+            @keyframes firecracker-burst {
+              0% { transform: translate(0, 0); opacity: 1; }
+              100% { transform: translate(var(--tx), var(--ty)); opacity: 0; }
+            }
+            .firecracker { animation: firecracker-burst 1s ease-out forwards; }
+          `}</style>
+          {[...Array(30)].map((_, i) => {
+            const angle = (i / 30) * Math.PI * 2
+            const distance = 150
+            const tx = Math.cos(angle) * distance
+            const ty = Math.sin(angle) * distance
+            return (
+              <div
+                key={i}
+                className="firecracker fixed w-2 h-2 rounded-full pointer-events-none"
+                style={{
+                  left: '50%',
+                  top: '50%',
+                  '--tx': `${tx}px`,
+                  '--ty': `${ty}px`,
+                  backgroundColor: ['#FF6B35', '#FF8C42', '#FFD700', '#00FF00', '#FF1493'][i % 5],
+                } as React.CSSProperties}
+              />
+            )
+          })}
+        </>
+      )}
+
       {/* Background decorative glows */}
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-[#FF6B35]/10 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-blue-500/10 blur-[120px] pointer-events-none" />
