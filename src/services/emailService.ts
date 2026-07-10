@@ -20,9 +20,6 @@ We've analyzed your online presence. Here is your report summary:
 🔴 Top Issues Found:
 ${top3Issues || '• None detected! Your website structure is solid.'}
 
-To view your full interactive audit report, please visit:
-${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/challenge/report/${lead.id}
-
 As a special thank-you for participating, we're offering ${lead.company_name} an exclusive 50% discount on our digital marketing services:
 • Search Engine Optimization (SEO)
 • Social Media Marketing
@@ -52,12 +49,6 @@ seofox.io
 
   <h3 style="color: #e53e3e;">⚠️ Critical Areas of Improvement</h3>
   ${htmlIssues ? `<ul style="padding-left: 20px;">${htmlIssues}</ul>` : '<p>No critical issues found! Your website is performing well.</p>'}
-  
-  <div style="text-align: center; margin: 30px 0;">
-    <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/challenge/report/${lead.id}" style="background-color: #FF6B35; color: white; padding: 12px 25px; text-decoration: none; font-weight: bold; border-radius: 5px; box-shadow: 0 4px 6px rgba(255,107,53,0.2);">
-      View Full Interactive Report
-    </a>
-  </div>
 
   <hr style="border: 0; border-top: 1px solid #eee; margin: 35px 0;" />
 
