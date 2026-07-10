@@ -70,7 +70,25 @@ export async function scanWebsite(url: string) {
       }
 
       // Check for sitemap
+      let hasSitemapFile = false
+      try {
+        const sitemapUrl = new URL(fullUrl)
+        sitemapUrl.pathname = '/sitemap.xml'
+        const sitemapResp = await fetch(sitemapUrl.toString(), { method: 'HEAD' }).catch(() => null)
+        if (sitemapResp && sitemapResp.ok) {
+          hasSitemapFile = true
+        } else {
+          // Check common WordPress sitemap index
+          sitemapUrl.pathname = '/sitemap_index.xml'
+          const wpSitemapResp = await fetch(sitemapUrl.toString(), { method: 'HEAD' }).catch(() => null)
+          hasSitemapFile = wpSitemapResp ? wpSitemapResp.ok : false
+        }
+      } catch {
+        hasSitemapFile = false
+      }
+
       result.hasSitemap =
+        hasSitemapFile ||
         /sitemap/i.test(html) ||
         html.includes('sitemap.xml') ||
         html.includes('sitemap.xml.gz')

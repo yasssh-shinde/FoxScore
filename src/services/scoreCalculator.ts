@@ -38,25 +38,25 @@ const AUDIT_WEIGHTS = {
 }
 
 export function calculateScore(auditData: AuditData): ScoreResult {
-  const websiteScore = calculateCategoryScore(auditData.website)
-  const seoScore = calculateCategoryScore(auditData.seo)
-  const googleScore = calculateCategoryScore(auditData.google)
-  const socialScore = calculateCategoryScore(auditData.social)
+  const websiteScore = calculateCategoryScore(auditData.website) // 0 to 100
+  const seoScore = calculateCategoryScore(auditData.seo) // 0 to 100
+  const googleScore = calculateCategoryScore(auditData.google) // 0 to 100
+  const socialScore = calculateCategoryScore(auditData.social) // 0 to 100
 
+  // Adjusted weights: website=35%, seo=30%, google=20%, social=15% (sum to 100%)
   const overall = Math.round(
-    websiteScore * WEIGHTS.website +
-    seoScore * WEIGHTS.seo +
-    googleScore * WEIGHTS.google +
-    socialScore * WEIGHTS.social
+    websiteScore * 0.35 +
+    seoScore * 0.30 +
+    googleScore * 0.20 +
+    socialScore * 0.15
   )
 
-  // Convert to scale of 10 (integer only)
   return {
-    overall: Math.round(overall / 10),
-    website: Math.round(websiteScore / 10),
-    seo: Math.round(seoScore / 10),
-    google: Math.round(googleScore / 10),
-    social: Math.round(socialScore / 10),
+    overall: Math.round(overall),
+    website: Math.round(websiteScore),
+    seo: Math.round(seoScore),
+    google: Math.round(googleScore),
+    social: Math.round(socialScore),
     won: false,
   }
 }
@@ -65,12 +65,15 @@ function calculateCategoryScore(items: AuditItem[]): number {
   if (items.length === 0) return 0
 
   let totalScore = 0
+  let totalWeight = 0
   items.forEach((item) => {
     const score = item.status === 'pass' ? item.weight * 100 : item.status === 'warning' ? item.weight * 50 : 0
     totalScore += score
+    totalWeight += item.weight * 100
   })
 
-  return Math.round(totalScore)
+  if (totalWeight === 0) return 0
+  return Math.round((totalScore / totalWeight) * 100)
 }
 
 export async function generateAuditData(website: string): Promise<AuditData> {
@@ -173,34 +176,8 @@ export async function generateAuditData(website: string): Promise<AuditData> {
   if (scan.hasRobots) strengths.push('✅ Robots.txt Present')
   if (scan.responds) strengths.push('✅ Website Responsive')
 
-  // Ensure we have at least 4 improvements
-  const defaultImprovements = [
-    '❌ Schema Markup: Missing structured data markup',
-    '❌ AI Readiness: Missing question-format headings',
-    '❌ Accessibility: Some elements lack accessible labels',
-    '❌ Social Tags: Open Graph metadata incomplete'
-  ]
-  let impIdx = 0
-  while (improvements.length < 4 && impIdx < defaultImprovements.length) {
-    improvements.push(defaultImprovements[impIdx])
-    impIdx++
-  }
-
-  // Ensure we have at least 4 strengths
-  const defaultStrengths = [
-    '✅ Basic layout structures configured',
-    '✅ Page assets crawlable',
-    '✅ Main semantic elements present',
-    '✅ Basic web presence established'
-  ]
-  let strIdx = 0
-  while (strengths.length < 4 && strIdx < defaultStrengths.length) {
-    strengths.push(defaultStrengths[strIdx])
-    strIdx++
-  }
-
-  const selectedIssues = improvements.slice(0, 4)
-  const selectedStrengths = strengths.slice(0, 4)
+  const selectedIssues = improvements
+  const selectedStrengths = strengths
 
   return {
     website: websiteItems,

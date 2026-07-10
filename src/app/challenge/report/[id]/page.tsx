@@ -311,7 +311,7 @@ export default function ReportPage() {
     const fail = checks.filter(c => c.status === 'fail').length
     const info = checks.filter(c => c.status === 'info').length
     const total = checks.length
-    const overallScore = Math.round(((pass + warn * 0.5) / (total - info)) * 100)
+    const overallScore = audit?.overall_score ? Math.round(Number(audit.overall_score)) : 0
 
     // Grouping
     const groups: { [key: string]: CheckItem[] } = {}

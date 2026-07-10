@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body: RegistrationFormData & { guessed_score: number } = await req.json()
+    const body: RegistrationFormData & { guessed_score: number; checked_by?: string } = await req.json()
 
     // Generate reference ID
     const referenceId = `REF-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
@@ -77,8 +77,8 @@ export async function POST(req: NextRequest) {
     console.log('✅ Scan complete, calculating score')
     const scoreResult = calculateScore(auditData)
 
-    // Check if won prize
-    const won = scoreResult.overall === body.guessed_score
+    // Check if won prize (compare guess out of 10 with actual overall score scaled to 10)
+    const won = Math.round(scoreResult.overall / 10) === body.guessed_score
 
     // Create lead
     const { data: lead, error: leadError } = await supabase
@@ -150,6 +150,27 @@ export async function POST(req: NextRequest) {
           score: scoreResult.overall,
         }),
       }).catch((e) => console.error('Webhook error:', e))
+    }
+
+    // Optional: Sync with Google Sheets via Webapp Webhook
+    if (process.env.GOOGLE_SHEET_WEBHOOK_URL) {
+      console.log('📊 Syncing lead to Google Sheets...')
+      await fetch(process.env.GOOGLE_SHEET_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          timestamp: new Date().toISOString(),
+          reference_id: referenceId,
+          full_name: body.full_name,
+          company_name: body.company_name,
+          email: body.email,
+          mobile_number: body.mobile_number,
+          website_url: body.website_url,
+          guessed_score: body.guessed_score,
+          actual_score: scoreResult.overall,
+          won_prize: won,
+        }),
+      }).catch((e) => console.error('Google Sheet Sync Error:', e))
     }
 
     return NextResponse.json({

@@ -48,116 +48,9 @@ export default function ResultPage() {
 
   // Client-side SEO analyzer engine running 60+ checks on the stored raw HTML to get exact report score out of 10
   const reportOverallScore = useMemo(() => {
-    const htmlContent = audit?.audit_data?.html
-    if (!htmlContent) return audit?.overall_score ? Math.round(audit.overall_score) : 0
-
-    const parser = new DOMParser()
-    const doc = parser.parseFromString(htmlContent, 'text/html')
-    const checks: any[] = []
-
-    const push = (group: string, status: 'pass' | 'fail' | 'warn' | 'info') => {
-      checks.push({ group, status })
-    }
-
-    const kw = lead?.company_name?.toLowerCase() || ''
-    const pageUrl = lead?.website_url || ''
-
-    // 1. TITLE & META
-    const title = doc.querySelector('title')
-    const titleText = title ? title.textContent?.trim() || '' : ''
-
-    if (!titleText) {
-      push('Title & Meta', 'fail')
-    } else if (titleText.length < 30 || titleText.length > 65) {
-      push('Title & Meta', 'warn')
-    } else {
-      push('Title & Meta', 'pass')
-    }
-
-    if (kw && titleText && titleText.toLowerCase().includes(kw)) {
-      push('Title & Meta', 'pass')
-    }
-
-    const metaDesc = doc.querySelector('meta[name="description"]')
-    const descText = metaDesc ? metaDesc.getAttribute('content') || '' : ''
-    if (!descText) {
-      push('Title & Meta', 'fail')
-    } else if (descText.length < 70 || descText.length > 165) {
-      push('Title & Meta', 'warn')
-    } else {
-      push('Title & Meta', 'pass')
-    }
-
-    // 2. HEADINGS
-    const h1s = doc.querySelectorAll('h1')
-    const h2s = doc.querySelectorAll('h2')
-    const h3s = doc.querySelectorAll('h3')
-
-    if (h1s.length === 0) push('Headings', 'fail')
-    else if (h1s.length > 1) push('Headings', 'warn')
-    else push('Headings', 'pass')
-
-    if (h2s.length > 0) push('Headings', 'pass')
-    if (h3s.length > 0 && h2s.length === 0) push('Headings', 'warn')
-
-    // 3. CONTENT
-    const bodyText = doc.body ? doc.body.innerText || doc.body.textContent || '' : ''
-    const words = bodyText.trim().split(/\s+/).filter(w => w.length > 1)
-    const wordCount = words.length
-    if (wordCount < 300) push('Content Quality', 'fail')
-    else if (wordCount < 600) push('Content Quality', 'warn')
-    else push('Content Quality', 'pass')
-
-    // 4. IMAGES
-    const imgs = doc.querySelectorAll('img')
-    const noAlt = Array.from(imgs).filter(i => !i.getAttribute('alt')?.trim())
-    if (imgs.length === 0) push('Images', 'warn')
-    else if (noAlt.length > 0) push('Images', 'warn')
-
-    // 5. LINKS
-    const allLinks = Array.from(doc.querySelectorAll('a[href]'))
-    const internalLinks = allLinks.filter(a => {
-      const h = a.getAttribute('href') || ''
-      return h.startsWith('/') || h.startsWith('./') || h.includes(pageUrl)
-    })
-    if (internalLinks.length < 2) push('Links', 'warn')
-
-    // 6. TECHNICAL
-    const viewport = doc.querySelector('meta[name="viewport"]')
-    if (!viewport) push('Technical SEO', 'fail')
-
-    // 7. SOCIAL & OG
-    const ogTitle = doc.querySelector('meta[property="og:title"]')
-    if (!ogTitle) push('Social & OG', 'fail')
-
-    // 8. SCHEMA
-    const schemas = Array.from(doc.querySelectorAll('script[type="application/ld+json"]'))
-    if (schemas.length === 0) push('Schema Markup', 'warn')
-
-    // 9. ACCESSIBILITY
-    const inputs = doc.querySelectorAll('input:not([type="hidden"]), textarea, select')
-    const unlabeledInputs = Array.from(inputs).filter(inp => {
-      const id = inp.getAttribute('id')
-      const ariaLabel = inp.getAttribute('aria-label')
-      return !id && !ariaLabel
-    })
-    if (unlabeledInputs.length > 0) push('Accessibility', 'warn')
-
-    // 10. AI READINESS
-    const h3Texts = Array.from(h3s).map(h => h.textContent?.trim() || '')
-    const questionH3s = h3Texts.filter(t => t.endsWith('?') || /^(what|how|why|when|where|who|is|are|does|can|should|will)/i.test(t))
-    if (questionH3s.length >= 2) push('AI Readiness', 'pass')
-
-    // Calculate final scores
-    const pass = checks.filter(c => c.status === 'pass').length
-    const warn = checks.filter(c => c.status === 'warn').length
-    const info = checks.filter(c => c.status === 'info').length
-    const total = checks.length
-    const overall100 = Math.round(((pass + warn * 0.5) / (total - info)) * 100)
-    
-    // Scale to 10
-    return Math.round(overall100 / 10)
-  }, [audit, lead])
+    // Get actual score directly from database (stored out of 100) and scale to 10
+    return audit?.overall_score ? Math.round(Number(audit.overall_score) / 10) : 0
+  }, [audit])
 
   useEffect(() => {
     if (showScore && reportOverallScore > 0 && animatedScore < reportOverallScore) {
@@ -364,7 +257,7 @@ export default function ResultPage() {
           {[
             {
               label: 'Website Speed',
-              score: audit.website_score,
+              score: Math.round(Number(audit.website_score) / 10),
               color: 'from-blue-500/20 to-blue-600/5 border-blue-500/20',
               badgeColor: 'bg-blue-500/20 text-blue-300',
               icon: (
@@ -375,7 +268,7 @@ export default function ResultPage() {
             },
             {
               label: 'On-Page SEO',
-              score: audit.seo_score,
+              score: Math.round(Number(audit.seo_score) / 10),
               color: 'from-purple-500/20 to-purple-600/5 border-purple-500/20',
               badgeColor: 'bg-purple-500/20 text-purple-300',
               icon: (
@@ -386,7 +279,7 @@ export default function ResultPage() {
             },
             {
               label: 'Google Presence',
-              score: audit.google_score,
+              score: Math.round(Number(audit.google_score) / 10),
               color: 'from-red-500/20 to-red-600/5 border-red-500/20',
               badgeColor: 'bg-red-500/20 text-red-300',
               icon: (
@@ -397,7 +290,7 @@ export default function ResultPage() {
             },
             {
               label: 'Social Authority',
-              score: audit.social_score,
+              score: Math.round(Number(audit.social_score) / 10),
               color: 'from-green-500/20 to-green-600/5 border-green-500/20',
               badgeColor: 'bg-green-500/20 text-green-300',
               icon: (

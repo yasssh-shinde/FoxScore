@@ -18,6 +18,14 @@ export default function Challenge() {
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    const fallbackMembers: TeamMember[] = [
+      { id: 'yash-1', name: 'Yash', email: 'yash@seofox.io', role: 'admin', status: 'active', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+      { id: 'dnya-1', name: 'Dnya', email: 'dnya@seofox.io', role: 'manager', status: 'active', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+      { id: 'achyut-1', name: 'Achyut', email: 'achyut@seofox.io', role: 'manager', status: 'active', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+      { id: 'vaibhav-1', name: 'Vaibhav', email: 'vaibhav@seofox.io', role: 'manager', status: 'active', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+      { id: 'gargi-1', name: 'Gargi', email: 'gargi@seofox.io', role: 'manager', status: 'active', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+    ]
+
     const fetchTeamMembers = async () => {
       try {
         const res = await fetch('/api/team-members')
@@ -30,14 +38,6 @@ export default function Challenge() {
           setSelectedTeamMember(data[0].id)
           setSelectedTeamMemberName(data[0].name)
         } else {
-          // Fallback team members for development
-          const fallbackMembers = [
-            { id: 'yash-1', name: 'Yash', email: 'yash@seofox.io', role: 'admin', status: 'active' },
-            { id: 'dnya-1', name: 'Dnya', email: 'dnya@seofox.io', role: 'manager', status: 'active' },
-            { id: 'achyut-1', name: 'Achyut', email: 'achyut@seofox.io', role: 'manager', status: 'active' },
-            { id: 'vaibhav-1', name: 'Vaibhav', email: 'vaibhav@seofox.io', role: 'manager', status: 'active' },
-            { id: 'gargi-1', name: 'Gargi', email: 'gargi@seofox.io', role: 'manager', status: 'active' },
-          ]
           setTeamMembers(fallbackMembers)
           setSelectedTeamMember(fallbackMembers[0].id)
           setSelectedTeamMemberName(fallbackMembers[0].name)
@@ -45,14 +45,6 @@ export default function Challenge() {
         }
       } catch (error) {
         console.error('Failed to fetch team members:', error)
-        // Fallback team members for development
-        const fallbackMembers = [
-          { id: 'yash-1', name: 'Yash', email: 'yash@seofox.io', role: 'admin', status: 'active' },
-          { id: 'dnya-1', name: 'Dnya', email: 'dnya@seofox.io', role: 'manager', status: 'active' },
-          { id: 'achyut-1', name: 'Achyut', email: 'achyut@seofox.io', role: 'manager', status: 'active' },
-          { id: 'vaibhav-1', name: 'Vaibhav', email: 'vaibhav@seofox.io', role: 'manager', status: 'active' },
-          { id: 'gargi-1', name: 'Gargi', email: 'gargi@seofox.io', role: 'manager', status: 'active' },
-        ]
         setTeamMembers(fallbackMembers)
         setSelectedTeamMember(fallbackMembers[0].id)
         setSelectedTeamMemberName(fallbackMembers[0].name)
