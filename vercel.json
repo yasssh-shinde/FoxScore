@@ -10,6 +10,14 @@
     "SUPABASE_SERVICE_ROLE_KEY": "",
     "NEXT_PUBLIC_PRIZE_AMOUNT": "1000",
     "NEXT_PUBLIC_APP_URL": "https://foxscore.vercel.app",
-    "WHATSAPP_WEBHOOK_URL": ""
-  }
+    "WHATSAPP_WEBHOOK_URL": "",
+    "RESEND_API_KEY": "",
+    "CRON_SECRET": ""
+  },
+  "crons": [
+    {
+      "path": "/api/cron/process-jobs",
+      "schedule": "*/2 * * * *"
+    }
+  ]
 }
