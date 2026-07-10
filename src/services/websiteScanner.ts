@@ -57,7 +57,7 @@ export async function scanWebsite(url: string) {
       // Count images and alt tags
       const imgMatches = html.match(/<img[^>]*>/gi) || []
       result.hasImages = imgMatches.length
-      result.imagesWithAlt = imgMatches.filter(img => /alt=/i.test(img)).length
+      result.imagesWithAlt = imgMatches.filter((img: any) => /alt=/i.test(img)).length
 
       // Check for robots.txt
       try {

@@ -195,7 +195,7 @@ export function parseHtml(html: string, siteUrl: string): ParsedMetadata {
   $('script, style, noscript, iframe, svg').remove()
   const text = $('body').text() || $.text()
   const cleanedText = text.replace(/\s+/g, ' ').trim()
-  const wordCount = cleanedText.split(/\s+/).filter(w => w.length > 1).length
+  const wordCount = cleanedText.split(/\s+/).filter((w: any) => w.length > 1).length
   const textRatio = html.length > 0 ? parseFloat(((cleanedText.length / html.length) * 100).toFixed(2)) : 0
 
   return {
